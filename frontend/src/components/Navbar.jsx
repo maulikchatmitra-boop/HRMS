@@ -1,18 +1,74 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { FiChevronDown, FiUser, FiLogOut, FiBriefcase } from 'react-icons/fi';
+import { FiChevronDown, FiUser, FiLogOut, FiBriefcase, FiBell } from 'react-icons/fi';
 import { getRoleCategory } from '../utils/user.utils';
+import axiosClient from '../api/axiosClient';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  const [notifications, setNotifications] = useState([]);
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const notifDropdownRef = useRef(null);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await axiosClient.get('/leave/notifications');
+      setNotifications(res.data.data || []);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      // Poll every 30 seconds for live notifications
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await axiosClient.put(`/leave/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const unread = notifications.filter(n => !n.isRead);
+      await Promise.all(unread.map(n => axiosClient.put(`/leave/notifications/${n._id}/read`)));
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+    }
+  };
+
+  const handleClearAll = async () => {
+    try {
+      await axiosClient.delete('/leave/notifications');
+      setNotifications([]);
+    } catch (err) {
+      console.error('Error clearing all notifications:', err);
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
+      }
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(e.target)) {
+        setNotifDropdownOpen(false);
       }
     };
 
@@ -66,6 +122,88 @@ const Navbar = () => {
             </span>
           </div>
         )}
+
+        {/* Notifications Bell */}
+        <div className="relative" ref={notifDropdownRef}>
+          <button
+            onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
+            className="p-2 hover:bg-slate-50 rounded-xl relative transition-colors duration-200"
+            title="Notifications"
+          >
+            <FiBell className="w-5 h-5 text-slate-500" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full flex items-center justify-center animate-pulse" />
+            )}
+          </button>
+
+          {notifDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 z-25 animate-in fade-in slide-in-from-top-2">
+              <div className="px-4 py-2.5 border-b border-slate-50 flex items-center justify-between gap-2">
+                <p className="text-xs font-black text-slate-700 uppercase tracking-wider">Notifications</p>
+                <div className="flex items-center gap-2.5">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllAsRead}
+                      className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-wider"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={handleClearAll}
+                      className="text-[10px] font-black text-rose-600 hover:text-rose-700 uppercase tracking-wider"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                {notifications.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-xs text-slate-400 font-semibold">
+                    No notifications yet.
+                  </div>
+                ) : (
+                  notifications.map((n) => (
+                    <div
+                      key={n._id}
+                      onClick={() => handleMarkAsRead(n._id)}
+                      className={`px-4 py-3 hover:bg-slate-50/50 cursor-pointer flex gap-3 transition-colors ${
+                        !n.isRead ? 'bg-indigo-50/10' : ''
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className={`text-xs ${!n.isRead ? 'font-black text-slate-800' : 'font-semibold text-slate-500'}`}>
+                            {n.title}
+                          </p>
+                          {!n.isRead && (
+                            <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed mt-1">
+                          {n.message}
+                        </p>
+                        <p className="text-[9px] text-slate-350 font-bold mt-1.5">
+                          {new Date(n.createdAt).toLocaleString('en-IN', {
+                            timeZone: 'Asia/Kolkata',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true,
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="h-6 w-[1px] bg-slate-100 hidden md:block" />
 

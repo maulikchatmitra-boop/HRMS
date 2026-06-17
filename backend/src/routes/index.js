@@ -13,6 +13,7 @@ import shiftRoutes      from './shift.routes.js';
 import employeeTypeRoutes from './employee-type.routes.js';
 import workLocationRoutes from './work-location.routes.js';
 import holidayCalendarRoutes from './holiday-calendar.routes.js';
+import leaveRoutes from './leave.routes.js';
 
 
 const router = Router();
@@ -40,6 +41,7 @@ router.use('/shifts',          shiftRoutes);
 router.use('/employee-types',  employeeTypeRoutes);
 router.use('/work-locations',  workLocationRoutes);
 router.use('/holidays',        holidayCalendarRoutes);
+router.use('/leave',           leaveRoutes);
 
 
 // ─── Super Admin Routes ──────────────────────────────────────────

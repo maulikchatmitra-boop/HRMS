@@ -1,4 +1,4 @@
-# Multi-Tenant SaaS HRMS — Phase 1
+# Multi-Tenant SaaS HRMS — Complete Technical Blueprint
 
 > **Stack**: Node.js · Express.js · MongoDB · Mongoose · JWT · Zod · bcryptjs  
 > **Architecture**: Centralized MVC · ES Modules · Single Database · Shared Collections · Explicit Tenant Isolation
@@ -10,7 +10,7 @@
 1. [Project Overview](#project-overview)
 2. [Technology Stack](#technology-stack)
 3. [Architecture & Tenant Isolation](#architecture--tenant-isolation)
-4. [Phase 1 Modules](#phase-1-modules)
+4. [Functional Modules](#functional-modules)
 5. [Database Design](#database-design)
 6. [Folder & File Structure](#folder--file-structure)
 7. [File-by-File Description](#file-by-file-description)
@@ -30,11 +30,11 @@
 
 ## Project Overview
 
-This is the Phase 1 backend for a **Multi-Tenant SaaS Human Resource Management System (HRMS)**. Multiple companies (tenants) share a single MongoDB database and collections. All data is logically isolated by a `companyId` field that is propagated explicitly from the authenticated request context throughout the entire service and query layer.
+This is the technical manual for the **Multi-Tenant SaaS Human Resource Management System (HRMS)**. Multiple companies (tenants) share a single MongoDB database and collections. All data is logically isolated by a `companyId` field that is propagated explicitly from the authenticated request context throughout the entire service and query layer.
 
 **Key Principles:**
 - One database, shared collections, logical tenant isolation via `companyId`
-- Admin-controlled company onboarding (no public self-registration in Phase 1)
+- Admin-controlled company onboarding (no public self-registration)
 - Email uniqueness is scoped per company (same email can exist across different companies)
 - Permissions use `module.action` dot notation (e.g. `employee.create`)
 - All business queries explicitly filter by `companyId: req.user.companyId`
@@ -93,16 +93,21 @@ MongoDB (Single DB)
 
 ---
 
-## Phase 1 Modules
+## Functional Modules
 
 | Module | Base Route | Description |
 | :--- | :--- | :--- |
-| Authentication | `/api/v1/auth` | Login, logout, password management, current user |
-| Company Foundation | `/api/v1/companies` | Tenant onboarding, company settings |
-| Users | `/api/v1/users` | Employee CRUD, role assignment |
-| Roles | `/api/v1/roles` | Role CRUD, permission mapping |
-| Permissions | `/api/v1/permissions` | Global static permissions list |
-| Audit Logs | `/api/v1/audit-logs` | Activity history per tenant |
+| Authentication | `/api/v1/auth` | Login, logout, password change, current session user |
+| Company Foundation | `/api/v1/companies` | Tenant onboarding, company settings management |
+| Employees | `/api/v1/employees` | User directory, onboarding, termination, manager links |
+| Departments | `/api/v1/departments` | Business unit organization with unique codes |
+| Designations | `/api/v1/designations` | Corporate title levels |
+| Branches | `/api/v1/branches` | Physical office locations |
+| Shifts | `/api/v1/shifts` | Core working hours schedules (24-hour inputs) |
+| Holidays | `/api/v1/holidays` | Company holidays calendar |
+| Roles & Permissions | `/api/v1/roles` | RBAC role definitions and dynamic permissions mapping |
+| Audit Logs | `/api/v1/audit-logs` | Immutable activity trail tracking oldData vs newData |
+| Leave Management | `/api/v1/leave` | LMS: types, policies, balances, requests pipeline, calendar |
 
 ---
 
@@ -138,6 +143,11 @@ Stores tenant-scoped user accounts.
 | `password` | String | ✅ | bcrypt hashed, never returned |
 | `roleId` | ObjectId | ✅ | Ref → roles |
 | `status` | String | ✅ | `active` / `inactive` |
+| `departmentId` | ObjectId | ❌ | Ref → departments |
+| `designationId` | ObjectId | ❌ | Ref → designations |
+| `branchId` | ObjectId | ❌ | Ref → branches |
+| `shiftId` | ObjectId | ❌ | Ref → shifts |
+| `reportingManagerId`| ObjectId | ❌ | Ref → users |
 | `lastLogin` | Date | ❌ | Updated on each login |
 | `createdBy` | ObjectId | ❌ | Ref → users (null for seeded admin) |
 | `updatedBy` | ObjectId | ❌ | Ref → users |
@@ -148,8 +158,89 @@ Stores tenant-scoped user accounts.
 
 ---
 
+### Collection: `departments`
+Stores tenant-scoped business departments.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `name` | String | ✅ | Department name |
+| `code` | String | ✅ | Unique code per company |
+| `description` | String | ❌ | |
+| `createdBy` | ObjectId | ✅ | Ref → users |
+| `updatedBy` | ObjectId | ✅ | Ref → users |
+| `createdAt` | Date | auto | |
+| `updatedAt` | Date | auto | |
+
+**Indexes:** `{ companyId: 1, code: 1 }` (unique compound)
+
+---
+
+### Collection: `designations`
+Stores corporate job title designations.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `title` | String | ✅ | designation title |
+| `description` | String | ❌ | |
+| `createdBy` | ObjectId | ✅ | Ref → users |
+| `updatedBy` | ObjectId | ✅ | Ref → users |
+| `createdAt` | Date | auto | |
+| `updatedAt` | Date | auto | |
+
+**Indexes:** `{ companyId: 1, title: 1 }` (unique compound)
+
+---
+
+### Collection: `branches`
+Stores office location details.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `name` | String | ✅ | Location name |
+| `address` | String | ✅ | |
+| `city` | String | ✅ | |
+| `state` | String | ✅ | |
+| `country` | String | ✅ | |
+| `zipCode` | String | ✅ | |
+| `createdBy` | ObjectId | ✅ | Ref → users |
+| `updatedBy` | ObjectId | ✅ | Ref → users |
+
+---
+
+### Collection: `shifts`
+Stores operational shift hour periods.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `name` | String | ✅ | Shift name |
+| `startTime` | String | ✅ | Start time `HH:MM` |
+| `endTime` | String | ✅ | End time `HH:MM` |
+| `description` | String | ❌ | |
+| `createdBy` | ObjectId | ✅ | Ref → users |
+| `updatedBy` | ObjectId | ✅ | Ref → users |
+
+---
+
+### Collection: `holiday_calendars`
+Stores company-scoped public/optional holidays.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `name` | String | ✅ | Holiday description |
+| `date` | Date | ✅ | |
+| `description` | String | ❌ | |
+| `isOptional` | Boolean | ✅ | Optional rest day |
+| `isDeleted` | Boolean | ✅ | Soft delete flag |
+
+---
+
 ### Collection: `roles`
-Stores tenant-scoped roles.
+Stores tenant-scoped security authorization roles.
 
 | Field | Type | Required | Notes |
 | :--- | :--- | :--- | :--- |
@@ -170,8 +261,8 @@ Global static metadata for system permissions. **Not company-scoped.**
 
 | Field | Type | Required | Notes |
 | :--- | :--- | :--- | :--- |
-| `module` | String | ✅ | e.g. `employee` |
-| `action` | String | ✅ | e.g. `create` |
+| `module` | String | ✅ | e.g. `employee`, `leave` |
+| `action` | String | ✅ | e.g. `create`, `apply` |
 | `permissionKey` | String | ✅ | e.g. `employee.create` (globally unique) |
 
 **Indexes:** `permissionKey: 1` (unique)
@@ -195,6 +286,83 @@ Maps tenant roles to global permissions.
 
 ---
 
+### Collection: `leave_types`
+Stores leaves categories.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `name` | String | ✅ | Type name |
+| `code` | String | ✅ | Short code (e.g. SL, CL, LOP) |
+| `description` | String | ❌ | |
+| `status` | String | ✅ | `active` / `inactive` |
+
+---
+
+### Collection: `leave_policies`
+Stores leave allocation quotas per LeaveType.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `name` | String | ✅ | Policy name |
+| `leaveTypeId` | ObjectId | ✅ | Ref → leave_types |
+| `allocatedDays` | Number | ✅ | Days per year |
+| `isHalfDayAllowed`| Boolean | ✅ | Enables half day |
+| `status` | String | ✅ | `active` / `inactive` |
+
+---
+
+### Collection: `leave_balances`
+Stores employee leave allocation ledgers.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `employeeId` | ObjectId | ✅ | Ref → users |
+| `leaveTypeId` | ObjectId | ✅ | Ref → leave_types |
+| `allocated` | Number | ✅ | Total allocated |
+| `used` | Number | ✅ | Total used |
+| `remaining` | Number | ✅ | Total remaining |
+
+---
+
+### Collection: `leave_requests`
+Stores leave applications and workflow history.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `employeeId` | ObjectId | ✅ | Ref → users |
+| `employeeName` | String | ✅ | Snapshot |
+| `employeeCode` | String | ❌ | Snapshot |
+| `departmentName`| String | ❌ | Snapshot |
+| `leaveTypeId` | ObjectId | ✅ | Ref → leave_types |
+| `fromDate` | Date | ✅ | |
+| `toDate` | Date | ✅ | |
+| `totalDays` | Number | ✅ | Days count (excluding weekends/holidays) |
+| `isHalfDay` | Boolean | ✅ | |
+| `reason` | String | ✅ | |
+| `status` | String | ✅ | `pending_manager`, `pending_hr`, `approved`... |
+| `approvalHistory`| Array | ✅ | Approval trail timeline |
+
+---
+
+### Collection: `in_app_notifications`
+Stores in-app notifications inbox scoped to tenant and recipient user.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `userId` | ObjectId | ✅ | Ref → users (recipient) |
+| `title` | String | ✅ | Notification header title |
+| `message` | String | ✅ | Body content details |
+| `type` | String | ✅ | `leave_applied`, `leave_approved`, `leave_rejected`, `leave_cancelled`, `leave_sent_back` |
+| `referenceId` | ObjectId | ✅ | Ref → leave_requests |
+| `isRead` | Boolean | ✅ | Read/Unread flag (default: false) |
+
+---
+
 ### Collection: `audit_logs`
 Immutable activity trail. No `updatedAt`.
 
@@ -202,8 +370,8 @@ Immutable activity trail. No `updatedAt`.
 | :--- | :--- | :--- | :--- |
 | `companyId` | ObjectId | ✅ | Ref → companies |
 | `userId` | ObjectId | ✅ | Ref → users (actor) |
-| `module` | String | ✅ | e.g. `user`, `role`, `auth` |
-| `action` | String | ✅ | e.g. `create`, `login`, `delete` |
+| `module` | String | ✅ | e.g. `user`, `role`, `leave_request` |
+| `action` | String | ✅ | e.g. `create`, `approve_final`, `delete` |
 | `oldData` | Mixed | ❌ | Previous state snapshot |
 | `newData` | Mixed | ❌ | New state snapshot |
 | `ipAddress` | String | ❌ | Requester IP |
@@ -215,171 +383,165 @@ Immutable activity trail. No `updatedAt`.
 
 ```
 d:\Company\HRMS\
-├── README.md                          ← This file
+├── README.md                          ← This blueprint manual
 │
-└── backend/
-    ├── docs/
-    │   └── api_endpoints.md           ← API payload & response documentation
-    │
+├── frontend/                          ← Frontend Client Web Application
+│   ├── package.json
+│   ├── src/
+│   │   ├── api/
+│   │   │   └── axiosClient.js         ← Axios instance with interceptors
+│   │   ├── context/
+│   │   │   └── AuthContext.jsx        ← JWT session provider
+│   │   ├── components/
+│   │   │   ├── Sidebar.jsx            ← Navigation sidebar containing the menu
+│   │   │   ├── Button.jsx             ← Action Button UI
+│   │   │   ├── Card.jsx               ← Content Container card
+│   │   │   ├── Input.jsx              ← Reusable Form Inputs (Select, Textarea, Dates)
+│   │   │   └── Table.jsx              ← Pagination Datagrid component
+│   │   └── pages/
+│   │       ├── leave/
+│   │       │   ├── LeaveRequests.jsx  ← Request apply forms and approval pipeline
+│   │       │   ├── LeaveCalendar.jsx  ← Visual calendar (weekend/holiday exclusions)
+│   │       │   ├── LeaveBalances.jsx  ← Balances view & HR adjustment interface
+│   │       │   ├── LeavePolicies.jsx  ← Allocations policy configurator
+│   │       │   └── LeaveTypes.jsx     ← Categories (SL, CL, EL, LOP) config page
+│   │       ├── admin/
+│   │       │   ├── Employees.jsx      ← Onboard employee directory
+│   │       │   ├── Departments.jsx    ← Department lookup list
+│   │       │   ├── Designations.jsx   ← Designations lookup list
+│   │       │   ├── Branches.jsx       ← Branch locations lookup list
+│   │       │   ├── Shifts.jsx         ← Working hours shifts config list
+│   │       │   ├── Holidays.jsx       ← Holidays configuration directory
+│   │       │   └── Dashboard.jsx      ← Overview metrics dashboard
+│   │       └── Profile.jsx            ← User profile management (My Profile)
+│   │
+└── backend/                           ← Backend API Server
+    ├── package.json
     ├── scripts/
-    │   └── seed.js                    ← Global permissions seeder script
-    │
+    │   ├── seed.js                    ← Global permissions seeder
+    │   ├── seedItDemoData.js          ← Seeds companies (INFY, WIPRO, TCS), roles, managers, & employees
+    │   └── migrate-leave-permissions.js ← Migrates LMS permission mappings
     ├── src/
     │   ├── database/
-    │   │   └── connection.js          ← Mongoose connection manager
-    │   │
+    │   │   └── connection.js          ← MongoDB Mongoose connection manager
     │   ├── models/
-    │   │   ├── company.model.js       ← companies collection schema
-    │   │   ├── user.model.js          ← users collection schema
-    │   │   ├── role.model.js          ← roles collection schema
-    │   │   ├── role-permission.model.js  ← role_permissions collection schema
-    │   │   ├── permission.model.js    ← permissions collection schema
-    │   │   └── audit-log.model.js     ← audit_logs collection schema
-    │   │
+    │   │   ├── company.model.js
+    │   │   ├── user.model.js
+    │   │   ├── department.model.js
+    │   │   ├── designation.model.js
+    │   │   ├── branch.model.js
+    │   │   ├── shift.model.js
+    │   │   ├── holiday-calendar.model.js
+    │   │   ├── role.model.js
+    │   │   ├── permission.model.js
+    │   │   ├── role-permission.model.js
+    │   │   ├── leave-type.model.js
+    │   │   ├── leave-policy.model.js
+    │   │   ├── leave-balance.model.js
+    │   │   ├── leave-request.model.js
+    │   │   ├── in-app-notification.model.js
+    │   │   └── audit-log.model.js
     │   ├── services/
-    │   │   ├── auth.service.js        ← login, logout, password flows, hasPermission()
-    │   │   ├── company.service.js     ← onboardCompany (transaction), updateCompany
-    │   │   ├── user.service.js        ← createUser, getUsers, updateUser, deleteUser
-    │   │   ├── role.service.js        ← createRole, assignPermissionsToRole, deleteRole
-    │   │   ├── permission.service.js  ← getPermissions, bootstrapPermissions
-    │   │   └── auditLog.service.js    ← logAction() reusable audit writer, getAuditLogs
-    │   │
+    │   │   ├── auth.service.js
+    │   │   ├── company.service.js
+    │   │   ├── user.service.js        ← Handles user directory & employee profile CRUD
+    │   │   ├── department.service.js
+    │   │   ├── designation.service.js
+    │   │   ├── branch.service.js
+    │   │   ├── shift.service.js
+    │   │   ├── holiday-calendar.service.js
+    │   │   ├── role.service.js
+    │   │   ├── permission.service.js
+    │   │   ├── leave-type.service.js
+    │   │   ├── leave-policy.service.js
+    │   │   ├── leave-balance.service.js
+    │   │   ├── leave-request.service.js ← Validations, approvals workflow, and balance deduction
+    │   │   ├── leave-calendar.service.js
+    │   │   ├── leave-notification.service.js
+    │   │   └── auditLog.service.js
     │   ├── controllers/
-    │   │   ├── auth.controller.js     ← login, logout, me, forgotPassword, resetPassword, changePassword
-    │   │   ├── company.controller.js  ← onboardCompany, getCompany, updateCompany
-    │   │   ├── user.controller.js     ← createUser, getUsers, getUser, updateUser, deleteUser
-    │   │   ├── role.controller.js     ← createRole, getRoles, updateRole, deleteRole, assignPermissions
-    │   │   ├── permission.controller.js ← getPermissions
-    │   │   └── audit-log.controller.js  ← getAuditLogs
-    │   │
+    │   │   ├── auth.controller.js
+    │   │   ├── company.controller.js
+    │   │   ├── employee.controller.js  ← Employee directory controller
+    │   │   ├── department.controller.js
+    │   │   ├── designation.controller.js
+    │   │   ├── branch.controller.js
+    │   │   ├── shift.controller.js
+    │   │   ├── holiday-calendar.controller.js
+    │   │   ├── role.controller.js
+    │   │   ├── permission.controller.js
+    │   │   ├── leave-type.controller.js
+    │   │   ├── leave-policy.controller.js
+    │   │   ├── leave-balance.controller.js
+    │   │   ├── leave-request.controller.js
+    │   │   ├── leave-calendar.controller.js
+    │   │   ├── leave-notification.controller.js
+    │   │   └── audit-log.controller.js
     │   ├── middlewares/
-    │   │   ├── auth.middleware.js     ← JWT Bearer token verification → attaches req.user
-    │   │   ├── rbac.middleware.js     ← authorize(permissionKey) → calls hasPermission()
-    │   │   ├── validate.middleware.js ← validate(zodSchema) → sanitizes req.body
-    │   │   ├── audit.middleware.js    ← request-level audit logging hook (extensible)
-    │   │   └── error.middleware.js    ← Global error handler: formats Mongo & Zod errors
-    │   │
+    │   │   ├── auth.middleware.js     ← JWT Bearer token validator
+    │   │   ├── rbac.middleware.js     ← RBAC authorization middleware
+    │   │   ├── validate.middleware.js ← Zod schema request body validator
+    │   │   └── error.middleware.js    ← Formats CastError, Zod, and Mongo duplicate keys
     │   ├── routes/
-    │   │   ├── index.js               ← Aggregates all module routes under /api/v1
-    │   │   ├── auth.routes.js         ← POST /login, /logout, /forgot-password, /reset-password, /change-password, GET /me
-    │   │   ├── company.routes.js      ← POST /onboard, GET /, PUT /
-    │   │   ├── user.routes.js         ← POST /, GET /, GET /:id, PUT /:id, DELETE /:id
-    │   │   ├── role.routes.js         ← POST /, GET /, PUT /:id, DELETE /:id, POST /:id/permissions, GET /:id/permissions
-    │   │   ├── permission.routes.js   ← GET /
-    │   │   └── audit-log.routes.js    ← GET /
-    │   │
-    │   ├── validators/
-    │   │   ├── auth.validator.js      ← loginSchema, forgotPasswordSchema, resetPasswordSchema, changePasswordSchema
-    │   │   ├── company.validator.js   ← onboardCompanySchema, updateCompanySchema
-    │   │   ├── user.validator.js      ← createUserSchema, updateUserSchema
-    │   │   └── role.validator.js      ← createRoleSchema, updateRoleSchema, assignPermissionsSchema
-    │   │
-    │   ├── utils/
-    │   │   └── auth.utils.js          ← hashPassword, comparePassword, generateAccessToken, generateRefreshToken, generateResetToken, verifyToken
-    │   │
-    │   ├── app.js                     ← Express app: helmet, cors, body-parser, routes, error handler
-    │   └── server.js                  ← Entry point: loads .env, connects DB, starts HTTP server
-    │
-    └── package.json
+    │   │   ├── index.js               ← Aggregates routes at /api/v1
+    │   │   ├── auth.routes.js
+    │   │   ├── company.routes.js
+    │   │   ├── employee.routes.js
+    │   │   ├── department.routes.js
+    │   │   ├── designation.routes.js
+    │   │   ├── branch.routes.js
+    │   │   ├── shift.routes.js
+    │   │   ├── holiday-calendar.routes.js
+    │   │   ├── role.routes.js
+    │   │   ├── permission.routes.js
+    │   │   ├── leave.routes.js
+    │   │   └── audit-log.routes.js
+    │   └── utils/
+    │       └── auth.utils.js          ← Token signing and hash checking utilities
 ```
 
 ---
 
 ## File-by-File Description
 
-### `src/database/connection.js`
-Exports `connectDatabase()` async function. Called once at server startup from `server.js`. Connects Mongoose to the MongoDB URI from the environment.
-
-### `src/models/`
-All models are registered with explicit    names using the 3rd argument of `mongoose.model()` to prevent Mongoose from auto-pluralizing or renaming collections.
+### Mongoose Models (`src/models/`)
+Registered with explicit names using the 3rd argument of `mongoose.model()` to prevent Mongoose from auto-pluralizing or renaming collections.
 
 | File | `mongoose.model(name, schema, collectionName)` |
 | :--- | :--- |
 | `company.model.js` | `Company`, `CompanySchema`, `'companies'` |
 | `user.model.js` | `User`, `UserSchema`, `'users'` |
+| `department.model.js` | `Department`, `DepartmentSchema`, `'departments'` |
+| `designation.model.js` | `Designation`, `DesignationSchema`, `'designations'` |
+| `branch.model.js` | `Branch`, `BranchSchema`, `'branches'` |
+| `shift.model.js` | `Shift`, `ShiftSchema`, `'shifts'` |
+| `holiday-calendar.model.js` | `HolidayCalendar`, `HolidayCalendarSchema`, `'holiday_calendars'` |
 | `role.model.js` | `Role`, `RoleSchema`, `'roles'` |
-| `role-permission.model.js` | `RolePermission`, `RolePermissionSchema`, `'role_permissions'` |
 | `permission.model.js` | `Permission`, `PermissionSchema`, `'permissions'` |
+| `role-permission.model.js` | `RolePermission`, `RolePermissionSchema`, `'role_permissions'` |
+| `leave-type.model.js` | `LeaveType`, `LeaveTypeSchema`, `'leave_types'` |
+| `leave-policy.model.js` | `LeavePolicy`, `LeavePolicySchema`, `'leave_policies'` |
+| `leave-balance.model.js` | `LeaveBalance`, `LeaveBalanceSchema`, `'leave_balances'` |
+| `leave-request.model.js` | `LeaveRequest`, `LeaveRequestSchema`, `'leave_requests'` |
+| `in-app-notification.model.js` | `InAppNotification`, `InAppNotificationSchema`, `'in_app_notifications'` |
 | `audit-log.model.js` | `AuditLog`, `AuditLogSchema`, `'audit_logs'` |
 
-### `src/services/auth.service.js`
-Core authentication service. Contains all authentication business logic:
-- `login(companyCode, email, password)` — Resolves tenant by `companyCode`, matches user by `email + companyId`, verifies bcrypt hash, issues Access + Refresh tokens, updates `lastLogin`
-- `logout(companyId, userId)` — Logs the logout audit event
-- `forgotPassword(email, companyCode)` — Issues a stateless 30-minute JWT reset token
-- `resetPassword(token, newPassword)` — Verifies reset token, hashes and saves new password
-- `changePassword(userId, companyId, oldPassword, newPassword, actorId)` — Verifies current password before updating
-- `getCurrentUser(userId, companyId)` — Returns populated user session
-- `hasPermission(userId, permissionKey)` — Resolves user → role → role_permissions → permission
-
-### `src/services/company.service.js`
-Handles tenant provisioning inside a Mongoose session (transaction):
-- `onboardCompany(companyData, adminData, actorId)` — Creates the company, seeds all 4 default roles, maps default permissions to each role, creates the initial Company Admin user
-- `getCompanyById(companyId)` — Fetches company record
-- `updateCompany(companyId, updateData, actorId)` — Updates allowed fields, logs old/new state
-
-### `src/services/user.service.js`
-- `createUser(companyId, userData, actorId)` — Validates email uniqueness within company, validates role belongs to company, hashes password, creates user
-- `getUserById(companyId, userId)` — Finds user ensuring `companyId` match (IDOR protection)
-- `getUsers(companyId, filter)` — Lists users with optional query filters
-- `updateUser(companyId, userId, updateData, actorId)` — Validates email/role constraints before update
-- `deleteUser(companyId, userId, actorId)` — Prevents self-deletion, hard deletes within tenant scope
-
-### `src/services/role.service.js`
-- `createRole`, `getRoles`, `updateRole`, `deleteRole` — All scoped by `companyId`
-- `deleteRole` — Checks if any users are currently assigned before deleting; cascades permission mapping deletion in a transaction
-- `assignPermissionsToRole(companyId, roleId, permissionIds, actorId)` — Replaces all role_permissions for the role in a transaction; validates all permissionIds exist globally
-- `getRolePermissions(companyId, roleId)` — Returns permission documents populated from global collection
-
-### `src/services/permission.service.js`
-- `getPermissions()` — Returns all global static permissions
-- `bootstrapPermissions(permissionsList)` — Called by the seed script; idempotent insertion of system permissions
-
-### `src/services/auditLog.service.js`
-- `logAction({ companyId, userId, module, action, oldData, newData, ipAddress })` — Reusable function imported by all other services to write audit records
-- `getAuditLogs(companyId, filter, limit)` — Returns sorted, paginated logs with actor name populated
-
-### `src/middlewares/auth.middleware.js`
-Verifies the `Authorization: Bearer <token>` header using `verifyToken('access')` from `auth.utils.js`. Attaches `req.user = { userId, companyId, roleId }` on success.
-
-### `src/middlewares/rbac.middleware.js`
-Higher-order middleware factory: `authorize(permissionKey)`. Calls `hasPermission(req.user.userId, permissionKey)` from the auth service. Returns `403 Forbidden` if not allowed.
-
-### `src/middlewares/validate.middleware.js`
-Higher-order middleware factory: `validate(zodSchema)`. Calls `schema.safeParse(req.body)`. On failure, returns `400` with a structured `errors[]` array containing `{ field, message }`. On success, replaces `req.body` with the clean parsed data.
-
-### `src/middlewares/error.middleware.js`
-Global Express error handler (4-argument signature). Formats:
-- `ValidationError` → Mongoose validation errors
-- `code 11000` → MongoDB duplicate key constraint
-- `CastError` → Invalid ObjectId format
-- All others → 500 Internal Server Error (includes stack in development mode)
-
-### `src/utils/auth.utils.js`
-Single consolidated utility file for all security operations:
-- `hashPassword(password)` — bcrypt hash with salt rounds 12
-- `comparePassword(password, hash)` — bcrypt compare
-- `generateAccessToken(payload)` — Signs with `JWT_ACCESS_SECRET`, expires 15m
-- `generateRefreshToken(payload)` — Signs with `JWT_REFRESH_SECRET`, expires 7d
-- `generateResetToken(payload)` — Signs with `JWT_RESET_SECRET`, expires 30m
-- `verifyToken(token, type)` — Verifies using the correct secret based on `type: 'access' | 'refresh' | 'reset'`
-
-### `src/app.js`
-Configures and exports the Express application:
-1. `helmet()` — Sets secure HTTP headers
-2. `cors()` — Configures CORS origin from `process.env.CORS_ORIGIN`
-3. `express.json()` + `express.urlencoded()` — Body parsing
-4. `auditLogger` — Request-level audit hook
-5. `router` — Mounted at `/api/v1`
-6. `*` wildcard 404 handler
-7. `errorHandler` — Global error handler (must be last)
-
-### `src/server.js`
-Application entry point:
-1. `dotenv.config()` — Loads `.env` file
-2. `connectDatabase()` — Establishes MongoDB connection
-3. `app.listen(PORT)` — Starts HTTP server
-4. Process-level error handlers for `unhandledRejection` and `uncaughtException`
+### Services (`src/services/`)
+* `auth.service.js` — Handles user login, logout, password resets, profile recovery, and permission queries (`hasPermission()`).
+* `company.service.js` — Coordinates company onboarding (wrapping company creation, role setup, and company admin generation in a database transaction).
+* `user.service.js` — Manages profile information, email uniqueness checks, active status tracking, and reporting manager assignments.
+* `department.service.js` — Validates department creation constraints (unique code per tenant).
+* `designation.service.js` / `branch.service.js` / `shift.service.js` — Basic master entity CRUD.
+* `holiday-calendar.service.js` — Soft deletes and list retrievals for public holidays.
+* `role.service.js` — Assigns global permissions to tenant roles, cascading permission deletions.
+* `permission.service.js` — Seeding system for global system permissions.
+* `leave-type.service.js` — Standardized active leave categories.
+* `leave-policy.service.js` — Assigns policies to roles, triggering automated user balance allocation blocks.
+* `leave-balance.service.js` — Fetching and manual adjustments for user balances.
+* `leave-request.service.js` — Handles leave applications, past/weekend/holiday validators, overlaps, and multi-stage workflow transitions.
+* `leave-calendar.service.js` — Parallel query runner gathering approved leaves and holidays for grid displays.
+* `leave-notification.service.js` — Coordinates in-app notifications (triggers for leave applied, manager approved, HR approved, rejected, and cancelled), inbox fetching, and clearing all notifications.
+* `auditLog.service.js` — Write-out helper to capture oldData vs newData snapshots for system audits.
 
 ---
 
@@ -387,70 +549,178 @@ Application entry point:
 
 Base URL: `http://localhost:5000/api/v1`
 
-| Method | Endpoint | Auth | Permission | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| POST | `/auth/login` | Public | — | Login with companyCode + email + password |
-| POST | `/auth/logout` | ✅ | — | Logout and clear refresh cookie |
-| POST | `/auth/forgot-password` | Public | — | Generate password reset token |
-| POST | `/auth/reset-password` | Public | — | Reset password with token |
-| POST | `/auth/change-password` | ✅ | — | Change password (authenticated) |
-| GET | `/auth/me` | ✅ | — | Get current user session |
-| POST | `/companies/onboard` | Public | — | Onboard new company (admin-controlled) |
-| GET | `/companies` | ✅ | `company.view` | Get own company details |
-| PUT | `/companies` | ✅ | `company.edit` | Update company settings |
-| POST | `/users` | ✅ | `employee.create` | Create a new user |
-| GET | `/users` | ✅ | `employee.view` | List all users in company |
-| GET | `/users/:id` | ✅ | `employee.view` | Get a single user |
-| PUT | `/users/:id` | ✅ | `employee.edit` | Update user details |
-| DELETE | `/users/:id` | ✅ | `employee.delete` | Delete a user |
-| POST | `/roles` | ✅ | `role.edit` | Create a new role |
-| GET | `/roles` | ✅ | `role.view` | List all roles |
-| PUT | `/roles/:id` | ✅ | `role.edit` | Update a role |
-| DELETE | `/roles/:id` | ✅ | `role.edit` | Delete a role |
-| POST | `/roles/:id/permissions` | ✅ | `role.edit` | Assign permissions to role (replaces all) |
-| GET | `/roles/:id/permissions` | ✅ | `role.view` | Get permissions assigned to role |
-| GET | `/permissions` | ✅ | `role.view` | List all global system permissions |
-| GET | `/audit-logs` | ✅ | `audit.view` | Get company audit logs |
-| GET | `/health` | Public | — | System health check |
+### Authentication (`/auth`)
+* `POST /auth/login` — Public. Login with `companyCode`, `email`, and `password`.
+* `POST /auth/logout` — Protected. Logs out user, writes audit log.
+* `GET /auth/me` — Protected. Retrieve active user profile data.
+
+### Employees (`/employees`)
+* `POST /employees/create` — Protected (`employee.create`). Onboard new employee user.
+* `GET /employees/list` — Protected (`employee.view`). View employee directory.
+* `GET /employees/profile/:id` — Protected (`employee.view`). Get individual profile details.
+* `PUT /employees/update/:id` — Protected (`employee.edit`). Edit employee profile fields.
+* `DELETE /employees/delete/:id` — Protected (`employee.delete`). Delete user.
+* `POST /employees/terminate/:id` — Protected (`employee.delete`). Terminate employee user.
+
+### Departments (`/departments`)
+* `POST /departments/create` (or `POST /`) — Protected (`department.create`). Add department.
+* `GET /departments/list` (or `GET /`) — Protected (`department.view`). List departments.
+* `GET /departments/detail/:id` (or `GET /:id`) — Protected (`department.view`). View department.
+* `PUT /departments/update/:id` (or `PUT /:id`) — Protected (`department.edit`). Edit department.
+* `DELETE /departments/delete/:id` (or `DELETE /:id`) — Protected (`department.delete`). Delete department.
+
+### Designations (`/designations`)
+* `POST /designations/create` (or `POST /`) — Protected (`designation.create`). Add designation.
+* `GET /designations/list` (or `GET /`) — Protected (`designation.view`). List designations.
+* `GET /designations/detail/:id` (or `GET /:id`) — Protected (`designation.view`). View designation.
+* `PUT /designations/update/:id` (or `PUT /:id`) — Protected (`designation.edit`). Edit designation.
+* `DELETE /designations/delete/:id` (or `DELETE /:id`) — Protected (`designation.delete`). Delete designation.
+
+### Branches (`/branches`)
+* `POST /branches/create` (or `POST /`) — Protected (`branch.create`). Add branch office.
+* `GET /branches/list` (or `GET /`) — Protected (`branch.view`). List branch offices.
+* `GET /branches/detail/:id` (or `GET /:id`) — Protected (`branch.view`). View branch.
+* `PUT /branches/update/:id` (or `PUT /:id`) — Protected (`branch.edit`). Edit branch details.
+* `DELETE /branches/delete/:id` (or `DELETE /:id`) — Protected (`branch.delete`). Remove branch.
+
+### Shifts (`/shifts`)
+* `POST /shifts/create` (or `POST /`) — Protected (`shift.create`). Add shift timing.
+* `GET /shifts/list` (or `GET /`) — Protected (`shift.view`). List shift timing.
+* `GET /shifts/detail/:id` (or `GET /:id`) — Protected (`shift.view`). View shift.
+* `PUT /shifts/update/:id` (or `PUT /:id`) — Protected (`shift.edit`). Edit shift.
+* `DELETE /shifts/delete/:id` (or `DELETE /:id`) — Protected (`shift.delete`). Delete shift.
+
+### Holidays (`/holidays`)
+* `POST /holidays/create` (or `POST /`) — Protected (`holiday.create`). Create holiday.
+* `GET /holidays/list` (or `GET /`) — Protected (`holiday.view`). List holidays.
+* `GET /holidays/detail/:id` (or `GET /:id`) — Protected (`holiday.view`). View holiday details.
+* `PUT /holidays/update/:id` (or `PUT /:id`) — Protected (`holiday.edit`). Edit holiday date/name.
+* `DELETE /holidays/delete/:id` (or `DELETE /:id`) — Protected (`holiday.delete`). Remove holiday.
+
+### Roles & Permissions (`/roles` & `/permissions`)
+* `POST /roles/create` (or `POST /`) — Protected (`role.edit`). Add role.
+* `GET /roles/list` (or `GET /`) — Protected (`role.view`). List roles.
+* `PUT /roles/update/:id` (or `PUT /:id`) — Protected (`role.edit`). Update role.
+* `DELETE /roles/delete/:id` (or `DELETE /:id`) — Protected (`role.edit`). Delete role.
+* `POST /roles/assign-permissions/:id` (or `POST /:id/permissions`) — Protected (`role.edit`). Assign permissions map.
+* `GET /roles/permissions/:id` (or `GET /:id/permissions`) — Protected (`role.view`). Get permissions mapped to role.
+* `GET /roles/all-permissions` — Protected (`role.view`). Get roles-to-permissions mapping matrix.
+* `GET /permissions` — Protected (`role.view`). List all static permission keys.
+
+### Audit Logs (`/audit-logs`)
+* `GET /audit-logs` — Protected (`audit.view`). Get company activity audit logs.
+
+### Leave Management (`/leave`)
+* `POST /leave/types` — Protected (`leaveType.create`). Add leave type.
+* `GET /leave/types` — Protected (`leaveType.view`/`leave.apply`). Get leave types.
+* `PUT /leave/types/:id` — Protected (`leaveType.edit`). Edit leave type.
+* `DELETE /leave/types/:id` — Protected (`leaveType.delete`). Delete leave type.
+* `POST /leave/policies` — Protected (`leavePolicy.create`). Add leave policy.
+* `GET /leave/policies` — Protected (`leavePolicy.view`). Get policies.
+* `POST /leave/policies/:id/assign` — Protected (`leavePolicy.edit`). Assign policy to role.
+* `DELETE /leave/policies/:id` — Protected (`leavePolicy.delete`). Delete policy.
+* `GET /leave/balances` — Protected (`leaveBalance.view`). View remaining allocations.
+* `PUT /leave/balances/adjust` — Protected (`leaveBalance.manage`). Adjust balances.
+* `POST /leave/requests` — Protected (`leave.apply`). Submit a leave application.
+* `GET /api/leave/requests` — Protected (`leave.viewOwn`/`leave.viewAll`). Fetch leave list.
+* `GET /leave/requests/:id` — Protected. Detailed request history.
+* `PUT /leave/requests/:id/action` — Protected (`leave.approve`/`leave.reject`/`leave.sendBack`/`leave.cancel`). Update request status.
+* `GET /leave/calendar` — Protected (`leaveCalendar.view`). Fetch calendar day events.
+* `GET /leave/notifications` — Protected. Get notifications inbox.
+* `PUT /leave/notifications/:id/read` — Protected. Mark notification as read.
+* `DELETE /leave/notifications` — Protected. Clear all notifications from database.
 
 ---
 
 ## Permission Keys Reference
 
-All permissions follow the `module.action` convention:
-
 | Permission Key | Module | Action | Description |
 | :--- | :--- | :--- | :--- |
-| `employee.create` | employee | create | Add new employees |
-| `employee.view` | employee | view | View employee directory & profiles |
+| `employee.create` | employee | create | Onboard new employee profiles |
+| `employee.view` | employee | view | View employees directory |
 | `employee.edit` | employee | edit | Update employee details |
 | `employee.delete` | employee | delete | Delete employee accounts |
-| `company.view` | company | view | View company settings |
-| `company.edit` | company | edit | Modify company settings |
-| `role.view` | role | view | View roles and permission mappings |
-| `role.edit` | role | edit | Create, update, delete roles and mappings |
-| `audit.view` | audit | view | View audit log history |
+| `company.view` | company | view | View company settings details |
+| `company.edit` | company | edit | Update company records |
+| `role.view` | role | view | View roles list & privilege matrices |
+| `role.edit` | role | edit | Manage roles and permission assignments |
+| `audit.view` | audit | view | Retrieve company compliance activity logs |
+| `department.create` | department | create | Add business departments |
+| `department.view` | department | view | View company departments list |
+| `department.edit` | department | edit | Edit department details |
+| `department.delete` | department | delete | Remove department records |
+| `designation.create` | designation | create | Add job title designation levels |
+| `designation.view` | designation | view | List designations |
+| `designation.edit` | designation | edit | Edit designations details |
+| `designation.delete` | designation | delete | Remove designation levels |
+| `branch.create` | branch | create | Add branch locations |
+| `branch.view` | branch | view | List branch offices |
+| `branch.edit` | branch | edit | Edit branch info |
+| `branch.delete` | branch | delete | Delete branch records |
+| `shift.create` | shift | create | Add shift timing slots |
+| `shift.view` | shift | view | List company shifts |
+| `shift.edit` | shift | edit | Edit shift timing parameters |
+| `shift.delete` | shift | delete | Delete shift templates |
+| `holiday.create` | holiday | create | Create public holidays |
+| `holiday.view` | holiday | view | View public holidays calendar list |
+| `holiday.edit` | holiday | edit | Update holiday parameters |
+| `holiday.delete` | holiday | delete | Delete holiday records |
+| `leaveType.create` | leaveType | create | Add leave categories (SL, CL, etc.) |
+| `leaveType.view` | leaveType | view | View leave categories |
+| `leaveType.edit` | leaveType | edit | Edit leave type statuses |
+| `leaveType.delete` | leaveType | delete | Delete leave categories |
+| `leavePolicy.create` | leavePolicy | create | Create leave quota policies |
+| `leavePolicy.view` | leavePolicy | view | List leave policies |
+| `leavePolicy.edit` | leavePolicy | edit | Assign leave policies to roles |
+| `leavePolicy.delete` | leavePolicy | delete | Remove leave policies |
+| `leaveBalance.view` | leaveBalance | view | View remaining leave allocations |
+| `leaveBalance.manage` | leaveBalance | manage | Manually adjust balance days |
+| `leave.apply` | leave | apply | Submit leave applications |
+| `leave.viewOwn` | leave | viewOwn | View own leave history |
+| `leave.viewAll` | leave | viewAll | View employee leaves (HR/Admin approvals) |
+| `leave.approve` | leave | approve | Approve pending leave applications |
+| `leave.reject` | leave | reject | Reject leave requests |
+| `leave.sendBack` | leave | sendBack | Send back leave requests for edits |
+| `leave.cancel` | leave | cancel | Cancel submitted requests |
+| `leaveCalendar.view` | leaveCalendar | view | Access monthly Leave Calendar |
 
 ---
 
 ## Default Roles & Permissions Matrix
 
-When a company is onboarded, 3 default roles are automatically created and mapped:
+Seeded company roles map to permissions based on the corporate access matrix below:
 
-| Permission Key | Company Admin | HR | Employee |
-| :--- | :---: | :---: | :---: |
-| `employee.create` | ✅ | ✅ | ❌ |
-| `employee.view` | ✅ | ✅ | ❌ |
-| `employee.edit` | ✅ | ✅ | ❌ |
-| `employee.delete` | ✅ | ✅ | ❌ |
-| `company.view` | ✅ | ✅ | ✅ |
-| `company.edit` | ✅ | ❌ | ❌ |
-| `role.view` | ✅ | ✅ | ❌ |
-| `role.edit` | ✅ | ❌ | ❌ |
-| `audit.view` | ✅ | ✅ | ❌ |
-
-> [!NOTE]
-> All default roles (such as HR and Employee) can be renamed, modified, or deleted by the administrator, except the `Company Admin` system role which is protected from deletion to prevent accidental lockout.
+| Permission Key | Company Admin | HR | Manager | Employee |
+| :--- | :---: | :---: | :---: | :---: |
+| `employee.*` (all) | ✅ | ✅ | ❌ | ❌ |
+| `employee.view` | ✅ | ✅ | ✅ | ✅ |
+| `company.view` | ✅ | ✅ | ✅ | ✅ |
+| `company.edit` | ✅ | ❌ | ❌ | ❌ |
+| `role.*` (all) | ✅ | ❌ | ❌ | ❌ |
+| `role.view` | ✅ | ✅ | ❌ | ❌ |
+| `audit.view` | ✅ | ✅ | ❌ | ❌ |
+| `department.*` | ✅ | ✅ | ❌ | ❌ |
+| `department.view` | ✅ | ✅ | ✅ | ✅ |
+| `designation.*` | ✅ | ✅ | ❌ | ❌ |
+| `designation.view` | ✅ | ✅ | ✅ | ✅ |
+| `branch.*` | ✅ | ✅ | ❌ | ❌ |
+| `branch.view` | ✅ | ✅ | ✅ | ✅ |
+| `shift.*` | ✅ | ✅ | ❌ | ❌ |
+| `shift.view` | ✅ | ✅ | ✅ | ✅ |
+| `holiday.*` | ✅ | ✅ | ❌ | ❌ |
+| `holiday.view` | ✅ | ✅ | ✅ | ✅ |
+| `leaveType.*` | ✅ | ✅ | ❌ | ❌ |
+| `leavePolicy.*` | ✅ | ✅ | ❌ | ❌ |
+| `leaveBalance.view` | ✅ | ✅ | ✅ | ✅ |
+| `leaveBalance.manage`| ✅ | ✅ | ❌ | ❌ |
+| `leave.apply` | ✅ | ✅ | ✅ | ✅ |
+| `leave.viewOwn` | ✅ | ✅ | ✅ | ✅ |
+| `leave.viewAll` | ✅ | ✅ | ✅ | ❌ |
+| `leave.approve` | ✅ | ✅ | ✅ | ❌ |
+| `leave.reject` | ✅ | ✅ | ✅ | ❌ |
+| `leave.sendBack` | ✅ | ✅ | ✅ | ❌ |
+| `leave.cancel` | ✅ | ✅ | ✅ | ✅ |
+| `leaveCalendar.view`| ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -473,10 +743,8 @@ Client
   │     └─ Authorization: Bearer <accessToken>
   │           └─ Auth Middleware verifies → attaches req.user
   │
-  └─ POST /auth/forgot-password { companyCode, email }
-        └─ Issues stateless Reset Token (30m) containing { userId, companyId, action: 'reset_password' }
-              └─ POST /auth/reset-password { token, newPassword }
-                    └─ Verifies reset token, hashes new password, saves
+  └─ GET /auth/me
+        └─ Returns populated current session user details & permissions
 ```
 
 ---
@@ -502,21 +770,21 @@ Request enters RBAC Middleware: authorize('employee.create')
 
 ## Audit Log Strategy
 
-Every service method that mutates data calls `logAction()` from `auditLog.service.js`:
+Every mutating database service method triggers `logAction()` to write compliance trail records:
 
 ```js
 await logAction({
-  companyId,          // Tenant scope
-  userId,             // Actor who performed the action
-  module: 'user',     // Which module was affected
-  action: 'create',   // What happened
-  oldData: null,      // Previous state (null for creates)
-  newData: savedUser, // New state (null for deletes)
-  ipAddress           // Optional request IP
+  companyId,          // Tenant company boundary
+  userId,             // Actor performing action
+  module: 'user',     // Module context
+  action: 'create',   // Operation action
+  oldData: null,      // Snapshot before modifications (null for creates)
+  newData: savedUser, // Snapshot after modifications (null for deletes)
+  ipAddress           // Requester IP
 });
 ```
 
-Passwords and sensitive fields are **deleted from data snapshots** before writing to audit_logs.
+Passwords and credit card fields are **deleted from snapshots** before writing to `audit_logs`.
 
 ---
 
@@ -525,15 +793,15 @@ Passwords and sensitive fields are **deleted from data snapshots** before writin
 Create a `.env` file inside `backend/`:
 
 ```env
-# Server
+# Server Configurations
 PORT=5000
 NODE_ENV=development
 CORS_ORIGIN=http://localhost:3000
 
-# MongoDB
+# MongoDB Connection String
 MONGODB_URI=mongodb://127.0.0.1:27017/hrms
 
-# JWT Secrets (use strong random strings in production)
+# JWT Passphrases
 JWT_ACCESS_SECRET=your_access_token_secret_here
 JWT_REFRESH_SECRET=your_refresh_token_secret_here
 JWT_RESET_SECRET=your_password_reset_token_secret_here
@@ -547,81 +815,63 @@ JWT_RESET_SECRET=your_password_reset_token_secret_here
 - Node.js v18 or higher
 - MongoDB running locally or a MongoDB Atlas connection string
 
-### Step 1 — Install dependencies
+### Step 1 — Install Dependencies
 ```bash
+# Install backend dependencies
 cd backend
+npm install
+
+# Install frontend dependencies
+cd ../frontend
 npm install
 ```
 
-### Step 2 — Configure environment
-Create `backend/.env` with the variables listed above.
+### Step 2 — Configure Environment
+Create `backend/.env` with your Mongo connection string and JWT Secrets.
 
-### Step 3 — Seed global permissions (run once)
+### Step 3 — Seed Global Permissions Database (Run Once)
 ```bash
+cd ../backend
 npm run seed
 ```
-This populates the global `permissions` collection with all 9 system permission keys. It is **idempotent** — safe to run multiple times.
+This populates the global `permissions` collection with all system permission keys. It is **idempotent** — safe to run multiple times.
 
-### Step 4 — Onboard the first company
-Call the onboarding endpoint once after seeding:
+### Step 4 — Seed IT Companies, Departments, Designations, Holidays & Users
 ```bash
-POST http://localhost:5000/api/v1/companies/onboard
-Content-Type: application/json
-
-{
-  "company": {
-    "companyName": "Acme Corp",
-    "companyCode": "ACME",
-    "email": "admin@acme.com",
-    "phone": "+1234567890"
-  },
-  "admin": {
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john@acme.com",
-    "password": "AdminPass123"
-  }
-}
+npm run seed:it
+node scripts/migrate-leave-permissions.js
 ```
-This creates the company, 4 default roles, all permission mappings, and the admin user in one atomic transaction.
+This drops the database, seeds 3 real-world companies (**INFY**, **WIPRO**, **TCS**), configures roles, assigns permissions, and generates demo accounts for testing.
 
-### Step 5 — Start the development server
+### Step 5 — Start Development Servers
 ```bash
+# Run backend
+cd backend
+npm run dev
+
+# Run frontend (in another terminal)
+cd frontend
 npm run dev
 ```
-API is live at: `http://localhost:5000/api/v1`
-
-### Available npm Scripts
-
-| Script | Command | Description |
-| :--- | :--- | :--- |
-| `npm run dev` | `nodemon src/server.js` | Development server with hot reload |
-| `npm start` | `node src/server.js` | Production server |
-| `npm run seed` | `node scripts/seed.js` | Seed global permissions database |
-| `npm run seed:it` | `node scripts/seedItDemoData.js` | Seed real-world IT companies, departments, designations, branches, shifts, holidays, roles, and employees |
 
 ---
 
 ## Seeding Workflow
 
 ```
-Phase 1: Bootstrap (once globally)
+Phase 1: Seed Global permissions
   └─ npm run seed
         └─ Connects to MongoDB
-        └─ Calls bootstrapPermissions([ all 9 permission objects ])
-        └─ Inserts new, skips existing
-        └─ Logs: "Inserted: X | Skipped: Y"
+        └─ Inserts all static permission keys
         └─ Disconnects
 
-Phase 2: Tenant Onboarding (once per company)
-  └─ POST /companies/onboard { company, admin }
-        └─ Creates Company record
-        └─ Creates 4 default Roles (Company Admin, HR, Manager, Employee)
-        └─ Queries global permissions collection
-        └─ Creates role_permissions mappings per default matrix
-        └─ Creates initial Admin User (password hashed)
-        └─ Writes audit log entry
-        └─ All steps wrapped in Mongoose session transaction (atomic)
+Phase 2: Seed IT Company Data
+  └─ npm run seed:it
+        └─ Creates 3 company profiles (Infosys, Wipro, TCS)
+        └─ Seeds Departments (DEV, QA, HR), Designations, Branches, Shifts
+        └─ Creates default Role permissions mappings
+        └─ Onboards default users (Admins, HRs, Managers, Employees)
+        └─ Run migration script to link leaves permissions to role permissions
 ```
 
 ---
@@ -635,7 +885,7 @@ All API responses follow this consistent structure:
 {
   "success": true,
   "data": { ... },
-  "message": "Descriptive success message."
+  "message": "Success message."
 }
 ```
 
@@ -656,7 +906,7 @@ All API responses follow this consistent structure:
 {
   "success": false,
   "data": null,
-  "message": "Authentication token has expired."
+  "message": "Token expired."
 }
 ```
 
@@ -665,17 +915,7 @@ All API responses follow this consistent structure:
 {
   "success": false,
   "data": null,
-  "message": "Access forbidden. You do not have permission to perform this action."
-}
-```
-
-**Server Error (500):**
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Internal Server Error",
-  "stack": "...only visible in development mode"
+  "message": "Access forbidden."
 }
 ```
 

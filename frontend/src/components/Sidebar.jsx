@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getRoleCategory, hasPermission } from '../utils/user.utils';
 import {
@@ -16,6 +16,8 @@ import {
   FiUser,
   FiLogOut,
   FiSettings,
+  FiChevronDown,
+  FiChevronUp,
 } from 'react-icons/fi';
 
 const Sidebar = () => {
@@ -97,10 +99,34 @@ const Sidebar = () => {
     return links;
   };
 
-  const navLinks = [
-    ...getLinks(),
-    { path: '/profile', label: 'My Profile', icon: FiUser },
-  ];
+  const getLeaveLinks = () => {
+    const links = [];
+    if (hasPermission(user, 'leaveType.view')) {
+      links.push({ path: '/leave/types', label: 'Leave Types', icon: FiGrid });
+    }
+    if (hasPermission(user, 'leavePolicy.view')) {
+      links.push({ path: '/leave/policies', label: 'Leave Policies', icon: FiBriefcase });
+    }
+    if (hasPermission(user, 'leaveBalance.view')) {
+      links.push({ path: '/leave/balances', label: 'Leave Balances', icon: FiClock });
+    }
+    if (hasPermission(user, 'leave.viewOwn')) {
+      links.push({ path: '/leave/requests', label: 'Leave Requests', icon: FiList });
+    }
+    if (hasPermission(user, 'leaveCalendar.view')) {
+      links.push({ path: '/leave/calendar', label: 'Leave Calendar', icon: FiCalendar });
+    }
+    return links;
+  };
+
+  const location = useLocation();
+  const [leaveMenuOpen, setLeaveMenuOpen] = useState(location.pathname.startsWith('/leave'));
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/leave')) {
+      setLeaveMenuOpen(true);
+    }
+  }, [location.pathname]);
 
   return (
     <aside className="w-64 bg-white border-r border-slate-100 flex flex-col h-screen fixed left-0 top-0 z-20">
@@ -117,7 +143,7 @@ const Sidebar = () => {
 
       {/* Nav links */}
       <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-        {navLinks.map((link) => {
+        {getLinks().map((link) => {
           const Icon = link.icon;
           return (
             <NavLink
@@ -136,6 +162,61 @@ const Sidebar = () => {
             </NavLink>
           );
         })}
+
+        {getLeaveLinks().length > 0 && (
+          <div className="pt-2">
+            <button
+              onClick={() => setLeaveMenuOpen(!leaveMenuOpen)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <FiCalendar className="w-4 h-4 text-slate-500" />
+                <span>Leave Management</span>
+              </div>
+              {leaveMenuOpen ? <FiChevronUp className="w-4 h-4 text-slate-400" /> : <FiChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+
+            {leaveMenuOpen && (
+              <div className="pl-4 mt-1 space-y-1 border-l border-slate-100 ml-6">
+                {getLeaveLinks().map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <NavLink
+                      key={link.path}
+                      to={link.path}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                          isActive
+                            ? 'bg-indigo-50 text-indigo-600 shadow-xs font-bold'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                        }`
+                      }
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{link.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="pt-4 mt-4 border-t border-slate-100">
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                isActive
+                  ? 'bg-indigo-50 text-indigo-600 shadow-xs'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+              }`
+            }
+          >
+            <FiUser className="w-4 h-4" />
+            <span>My Profile</span>
+          </NavLink>
+        </div>
       </nav>
 
       {/* Footer / Logout */}

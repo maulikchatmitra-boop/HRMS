@@ -50,7 +50,13 @@ const migrate = async () => {
               key.startsWith('shift.') ||
               key.startsWith('employeeType.') ||
               key.startsWith('workLocation.') ||
-              key.startsWith('holiday.')
+              key.startsWith('holiday.') ||
+              key.startsWith('leaveType.') ||
+              key.startsWith('leavePolicy.') ||
+              key.startsWith('leaveBalance.') ||
+              key.startsWith('leave.') ||
+              key.startsWith('leaveCalendar.') ||
+              key.startsWith('leaveHistory.')
             ) {
               eligibleKeys.push(key);
             }
@@ -64,12 +70,32 @@ const migrate = async () => {
               key === 'shift.view' ||
               key === 'employeeType.view' ||
               key === 'workLocation.view' ||
-              key === 'holiday.view'
+              key === 'holiday.view' ||
+              key === 'leaveType.view' ||
+              key === 'leavePolicy.view' ||
+              key === 'leaveBalance.view' ||
+              key === 'leave.apply' ||
+              key === 'leave.viewOwn' ||
+              key === 'leave.viewAll' ||
+              key === 'leave.cancel' ||
+              key === 'leave.approve' ||
+              key === 'leave.reject' ||
+              key === 'leave.sendBack' ||
+              key === 'leaveCalendar.view' ||
+              key === 'leaveHistory.view'
             ) {
               eligibleKeys.push(key);
             }
           } else if (role.roleName === 'Employee') {
-            if (key === 'company.view' || key === 'holiday.view') {
+            if (
+              key === 'company.view' ||
+              key === 'holiday.view' ||
+              key === 'leaveBalance.view' ||
+              key === 'leave.apply' ||
+              key === 'leave.viewOwn' ||
+              key === 'leave.cancel' ||
+              key === 'leaveCalendar.view'
+            ) {
               eligibleKeys.push(key);
             }
           }

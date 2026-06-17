@@ -13,4 +13,23 @@ export const createLeaveRequestSchema = z.object({
   reason: z.string({ required_error: 'Reason is required.' })
     .trim()
     .min(1, 'Reason cannot be empty.'),
+  attachment: z.string().trim().nullable().optional(),
 });
+
+export const handleLeaveActionSchema = z.object({
+  action: z.enum(['approve', 'reject', 'send_back', 'cancel'], {
+    required_error: 'Action is required.',
+  }),
+  remarks: z.string().trim().optional(),
+}).refine(
+  (data) => {
+    if ((data.action === 'reject' || data.action === 'send_back') && (!data.remarks || data.remarks.trim() === '')) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Remarks are required for rejecting or sending back a leave request.',
+    path: ['remarks'],
+  }
+);

@@ -69,7 +69,28 @@ const permissionsToSeed = [
   { module: 'holiday', action: 'create', permissionKey: 'holiday.create' },
   { module: 'holiday', action: 'view',   permissionKey: 'holiday.view' },
   { module: 'holiday', action: 'edit',   permissionKey: 'holiday.edit' },
-  { module: 'holiday', action: 'delete', permissionKey: 'holiday.delete' }
+  { module: 'holiday', action: 'delete', permissionKey: 'holiday.delete' },
+
+  // Leave Management permissions
+  { module: 'leaveType', action: 'create', permissionKey: 'leaveType.create' },
+  { module: 'leaveType', action: 'view',   permissionKey: 'leaveType.view' },
+  { module: 'leaveType', action: 'edit',   permissionKey: 'leaveType.edit' },
+  { module: 'leaveType', action: 'delete', permissionKey: 'leaveType.delete' },
+  { module: 'leavePolicy', action: 'create', permissionKey: 'leavePolicy.create' },
+  { module: 'leavePolicy', action: 'view',   permissionKey: 'leavePolicy.view' },
+  { module: 'leavePolicy', action: 'edit',   permissionKey: 'leavePolicy.edit' },
+  { module: 'leavePolicy', action: 'delete', permissionKey: 'leavePolicy.delete' },
+  { module: 'leaveBalance', action: 'view',   permissionKey: 'leaveBalance.view' },
+  { module: 'leaveBalance', action: 'manage', permissionKey: 'leaveBalance.manage' },
+  { module: 'leave', action: 'apply',    permissionKey: 'leave.apply' },
+  { module: 'leave', action: 'viewOwn',  permissionKey: 'leave.viewOwn' },
+  { module: 'leave', action: 'viewAll',  permissionKey: 'leave.viewAll' },
+  { module: 'leave', action: 'cancel',   permissionKey: 'leave.cancel' },
+  { module: 'leave', action: 'approve',  permissionKey: 'leave.approve' },
+  { module: 'leave', action: 'reject',   permissionKey: 'leave.reject' },
+  { module: 'leave', action: 'sendBack', permissionKey: 'leave.sendBack' },
+  { module: 'leaveCalendar', action: 'view', permissionKey: 'leaveCalendar.view' },
+  { module: 'leaveHistory',  action: 'view', permissionKey: 'leaveHistory.view' }
 ];
 
 const freshSeed = async () => {

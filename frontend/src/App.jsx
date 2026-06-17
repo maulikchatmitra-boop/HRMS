@@ -41,6 +41,13 @@ import ManagerEmployees from './pages/manager/Employees';
 import EmployeeDashboard from './pages/employee/Dashboard';
 import EmployeeHolidays from './pages/employee/Holidays';
 
+// Leave Pages
+import LeaveTypes from './pages/leave/LeaveTypes';
+import LeavePolicies from './pages/leave/LeavePolicies';
+import LeaveBalances from './pages/leave/LeaveBalances';
+import LeaveRequests from './pages/leave/LeaveRequests';
+import LeaveCalendar from './pages/leave/LeaveCalendar';
+
 // Helper component to redirect root "/" to the appropriate dashboard
 const HomeRedirect = () => {
   const { isAuthenticated, user } = useAuth();
@@ -317,6 +324,58 @@ function App() {
               <ProtectedRoute>
                 <RoleGuard requirePermission="holiday.view">
                   <EmployeeHolidays />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Leave Management Routes */}
+          <Route
+            path="/leave/types"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="leaveType.view">
+                  <LeaveTypes />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/leave/policies"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="leavePolicy.view">
+                  <LeavePolicies />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/leave/balances"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="leaveBalance.view">
+                  <LeaveBalances />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/leave/requests"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="leave.viewOwn">
+                  <LeaveRequests />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/leave/calendar"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="leaveCalendar.view">
+                  <LeaveCalendar />
                 </RoleGuard>
               </ProtectedRoute>
             }
