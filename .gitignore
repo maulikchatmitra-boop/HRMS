@@ -1,0 +1,20 @@
+# 1. Skip all node_modules folders
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# 2. Skip all secret environment files
+.env
+backend/.env
+
+# 3. Skip frontend production builds
+dist/
+frontend/dist/
+
+# 4. Skip log files
+*.log
+npm-debug.log*
+
+# 5. Skip operating system cache files
+.DS_Store
+Thumbs.db
