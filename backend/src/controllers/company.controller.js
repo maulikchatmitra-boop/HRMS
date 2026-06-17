@@ -25,26 +25,12 @@ const filterCompanyByRole = (company, roleName) => {
     };
   }
 
-  // HR → Basic + contact info
-  if (category === 'HR') {
+  // HR, Manager & Employee → Basic + contact info
+  if (category === 'HR' || category === 'Manager' || category === 'Employee') {
     return {
       ...base,
       email: company.email,
       phone: company.phone,
-    };
-  }
-
-  // Manager → Basic info only
-  if (category === 'Manager') {
-    return {
-      ...base,
-    };
-  }
-
-  // Employee → Sirf naam aur code
-  if (category === 'Employee') {
-    return {
-      ...base,
     };
   }
 

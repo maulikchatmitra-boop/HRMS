@@ -3,29 +3,47 @@ import { useAuth } from '../../context/AuthContext';
 import axiosClient from '../../api/axiosClient';
 import Card from '../../components/Card';
 import Spinner from '../../components/Spinner';
-import { FiClock, FiMapPin, FiBriefcase, FiUser } from 'react-icons/fi';
+import { FiClock, FiMapPin, FiBriefcase, FiUser, FiCalendar } from 'react-icons/fi';
 import { formatTime12h } from '../../utils/user.utils';
 
 const EmployeeDashboard = () => {
   const { user } = useAuth();
   const [companyInfo, setCompanyInfo] = useState(null);
+  const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCompanyInfo = async () => {
+    const fetchEmployeeData = async () => {
       try {
-        const res = await axiosClient.get('/companies');
-        setCompanyInfo(res.data.data);
+        const [compRes, holRes] = await Promise.allSettled([
+          axiosClient.get('/companies'),
+          axiosClient.get(`/holidays?year=${new Date().getFullYear()}`),
+        ]);
+        if (compRes.status === 'fulfilled') {
+          setCompanyInfo(compRes.value.data.data);
+        }
+        if (holRes.status === 'fulfilled') {
+          setHolidays(holRes.value.data.data || []);
+        }
       } catch (err) {
-        console.error('Failed to load company info for employee:', err);
+        console.error('Failed to load employee dashboard data:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchCompanyInfo();
+    fetchEmployeeData();
   }, []);
 
   if (loading) return <Spinner size="lg" />;
+
+  const getUpcomingHolidays = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return holidays
+      .filter((h) => new Date(h.date) >= today)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(0, 5);
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -39,12 +57,6 @@ const EmployeeDashboard = () => {
             Track your personal shift timing and branch directory here.
           </p>
         </div>
-        {companyInfo && (
-          <div className="text-right">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Employer Code</span>
-            <span className="text-sm font-black text-slate-700 block mt-0.5">{companyInfo.companyCode}</span>
-          </div>
-        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -91,7 +103,7 @@ const EmployeeDashboard = () => {
 
       {/* Profile details preview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 flex flex-col gap-8">
           <Card title="Designation Details" subtitle="Employment hierarchy">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs font-semibold py-2">
               <div className="flex items-center gap-3">
@@ -125,23 +137,49 @@ const EmployeeDashboard = () => {
               </div>
             </div>
           </Card>
+
+          <Card title="Upcoming Holidays" subtitle="Upcoming calendar events">
+            {getUpcomingHolidays().length === 0 ? (
+              <p className="text-sm font-semibold text-slate-500 py-3">No upcoming holidays scheduled.</p>
+            ) : (
+              <div className="flex flex-col gap-3 py-2">
+                {getUpcomingHolidays().map((h, idx) => (
+                  <div
+                    key={h._id || idx}
+                    className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-slate-100/55 transition-colors font-semibold text-slate-700 text-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-rose-50 text-rose-600">
+                        <FiCalendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">{h.name}</p>
+                        <p className="text-[10px] text-slate-400 font-semibold">{h.description || 'Public Holiday'}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-600 bg-white border border-slate-100 px-2.5 py-1 rounded-xl shadow-sm">
+                      {new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
 
-        <Card title="Corporate Group" subtitle="Business registration details">
+        <Card title="Organization Info" subtitle="Profile overview">
           <div className="flex flex-col gap-4 text-xs font-semibold">
             <div>
               <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Company Name</span>
               <span className="text-sm font-bold text-slate-700 mt-1 block">{companyInfo?.companyName || '-'}</span>
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Company Code</span>
-              <span className="text-sm font-bold text-slate-700 mt-1 block font-mono">{companyInfo?.companyCode || '-'}</span>
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Company Email</span>
+              <span className="text-sm font-bold text-slate-700 mt-1 block">{companyInfo?.email || '-'}</span>
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Service Status</span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 mt-1 text-[10px] uppercase tracking-wider">
-                {companyInfo?.status || 'active'}
-              </span>
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Company Phone</span>
+              <span className="text-sm font-bold text-slate-700 mt-1 block">{companyInfo?.phone || '-'}</span>
             </div>
           </div>
         </Card>

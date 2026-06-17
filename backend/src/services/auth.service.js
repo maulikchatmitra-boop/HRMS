@@ -145,6 +145,7 @@ export const login = async (companyCode, email, password) => {
   const cleanUser = formatCleanUser(user);
   cleanUser.companyStatus = company.status;
   cleanUser.companySubscriptionStatus = company.subscriptionStatus;
+  cleanUser.companyPlan = company.plan;
 
   if (user.roleId) {
     const mappings = await RolePermission.find({ companyId: company._id, roleId: user.roleId._id }).populate('permissionId');
@@ -152,10 +153,21 @@ export const login = async (companyCode, email, password) => {
   } else {
     cleanUser.permissions = [];
   }
+
+  const readOnlyPermissions = ['employee.view', 'holiday.view', 'department.view', 'branch.view', 'company.view'];
+  if (cleanUser && !cleanUser.isSuperAdmin && cleanUser.companyId) {
+    if (!cleanUser.permissions) cleanUser.permissions = [];
+    readOnlyPermissions.forEach(p => {
+      if (!cleanUser.permissions.includes(p)) {
+        cleanUser.permissions.push(p);
+      }
+    });
+  }
   cleanUser.companyCode = company.companyCode;
   cleanUser.companyName = company.companyName;
   cleanUser.companyStatus = company.status;
   cleanUser.companySubscriptionStatus = company.subscriptionStatus;
+  cleanUser.companyPlan = company.plan;
 
   return {
     user: cleanUser,
@@ -335,6 +347,7 @@ export const getCurrentUser = async (userId, companyId) => {
   cleanUser.companyName = company ? company.companyName : null;
   cleanUser.companyStatus = company ? company.status : 'active';
   cleanUser.companySubscriptionStatus = company ? company.subscriptionStatus : 'active';
+  cleanUser.companyPlan = company ? company.plan : 'basic';
 
   if (user.roleId) {
     const mappings = await RolePermission.find({ companyId: user.companyId, roleId: user.roleId._id }).populate('permissionId');
@@ -343,6 +356,16 @@ export const getCurrentUser = async (userId, companyId) => {
     cleanUser.permissions = [];
   } else {
     cleanUser.permissions = [];
+  }
+
+  const readOnlyPermissions = ['employee.view', 'holiday.view', 'department.view', 'branch.view', 'company.view'];
+  if (cleanUser && !cleanUser.isSuperAdmin && cleanUser.companyId) {
+    if (!cleanUser.permissions) cleanUser.permissions = [];
+    readOnlyPermissions.forEach(p => {
+      if (!cleanUser.permissions.includes(p)) {
+        cleanUser.permissions.push(p);
+      }
+    });
   }
   return cleanUser;
 };
@@ -403,12 +426,23 @@ export const updateSelfProfile = async (userId, companyId, updateData) => {
   cleanUser.companyName = company ? company.companyName : null;
   cleanUser.companyStatus = company ? company.status : 'active';
   cleanUser.companySubscriptionStatus = company ? company.subscriptionStatus : 'active';
+  cleanUser.companyPlan = company ? company.plan : 'basic';
 
   if (updated.roleId) {
     const mappings = await RolePermission.find({ companyId: companyId || null, roleId: updated.roleId._id }).populate('permissionId');
     cleanUser.permissions = mappings.map(m => m.permissionId?.permissionKey).filter(Boolean);
   } else {
     cleanUser.permissions = [];
+  }
+
+  const readOnlyPermissions = ['employee.view', 'holiday.view', 'department.view', 'branch.view', 'company.view'];
+  if (cleanUser && !cleanUser.isSuperAdmin && cleanUser.companyId) {
+    if (!cleanUser.permissions) cleanUser.permissions = [];
+    readOnlyPermissions.forEach(p => {
+      if (!cleanUser.permissions.includes(p)) {
+        cleanUser.permissions.push(p);
+      }
+    });
   }
   return cleanUser;
 };
@@ -434,6 +468,12 @@ export const hasPermission = async (userId, permissionKey) => {
 
   // Company Admins automatically have all permissions
   if (user.roleId && getRoleCategory(user.roleId.roleName) === 'Company Admin') {
+    return true;
+  }
+
+  // Allow active tenant users to view directories/counts
+  const readOnlyPermissions = ['employee.view', 'holiday.view', 'department.view', 'branch.view', 'company.view'];
+  if (readOnlyPermissions.includes(permissionKey) && user.companyId) {
     return true;
   }
 
@@ -497,12 +537,23 @@ export const refreshSession = async (refreshToken) => {
     cleanUser.companyName = company ? company.companyName : null;
     cleanUser.companyStatus = company ? company.status : 'active';
     cleanUser.companySubscriptionStatus = company ? company.subscriptionStatus : 'active';
+    cleanUser.companyPlan = company ? company.plan : 'basic';
 
     if (user.roleId) {
       const mappings = await RolePermission.find({ companyId: user.companyId, roleId: user.roleId._id }).populate('permissionId');
       cleanUser.permissions = mappings.map(m => m.permissionId?.permissionKey).filter(Boolean);
     } else {
       cleanUser.permissions = [];
+    }
+
+    const readOnlyPermissions = ['employee.view', 'holiday.view', 'department.view', 'branch.view', 'company.view'];
+    if (cleanUser && !cleanUser.isSuperAdmin && cleanUser.companyId) {
+      if (!cleanUser.permissions) cleanUser.permissions = [];
+      readOnlyPermissions.forEach(p => {
+        if (!cleanUser.permissions.includes(p)) {
+          cleanUser.permissions.push(p);
+        }
+      });
     }
 
     return {

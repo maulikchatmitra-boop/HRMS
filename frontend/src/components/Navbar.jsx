@@ -49,8 +49,8 @@ const Navbar = () => {
           </span>
         </div>
         {!user.isSuperAdmin && user.companyCode && (
-          <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100/50 px-2 py-0.5 rounded-md uppercase tracking-wider">
-            {user.companyCode}
+          <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100/50 px-2.5 py-1 rounded-md uppercase tracking-wider">
+            Company Code: {user.companyCode}
           </span>
         )}
       </div>
@@ -61,7 +61,9 @@ const Navbar = () => {
         {!user.isSuperAdmin && user.companyId && getRoleCategory(user.role?.roleName) === 'Company Admin' && (
           <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-semibold text-slate-600">
             <FiBriefcase className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Active Enterprise</span>
+            <span>
+              {`${user.companySubscriptionStatus ? user.companySubscriptionStatus.charAt(0).toUpperCase() + user.companySubscriptionStatus.slice(1).toLowerCase() : 'Active'} ${user.companyPlan ? user.companyPlan.charAt(0).toUpperCase() + user.companyPlan.slice(1).toLowerCase() : 'Basic'}`}
+            </span>
           </div>
         )}
 

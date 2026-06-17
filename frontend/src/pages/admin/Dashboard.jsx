@@ -16,6 +16,7 @@ const AdminDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [companyInfo, setCompanyInfo] = useState(null);
+  const [holidays, setHolidays] = useState([]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -40,7 +41,9 @@ const AdminDashboard = () => {
           data.branches = branchRes.value.data.data?.length || 0;
         }
         if (holRes.status === 'fulfilled') {
-          data.holidays = holRes.value.data.data?.length || 0;
+          const holData = holRes.value.data.data || [];
+          setHolidays(holData);
+          data.holidays = holData.length;
         }
         if (compRes.status === 'fulfilled') {
           setCompanyInfo(compRes.value.data.data);
@@ -65,6 +68,15 @@ const AdminDashboard = () => {
     { label: 'Operating Branches', value: counts.branches, icon: FiMapPin, color: 'text-amber-700 bg-amber-50' },
     { label: 'Upcoming Holidays', value: counts.holidays, icon: FiCalendar, color: 'text-rose-700 bg-rose-50' },
   ];
+
+  const getUpcomingHolidays = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return holidays
+      .filter((h) => new Date(h.date) >= today)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(0, 5);
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -103,7 +115,7 @@ const AdminDashboard = () => {
 
       {/* Main section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 flex flex-col gap-8">
           <Card title="Quick Management shortcuts" subtitle="Administrative actions">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Link
@@ -135,6 +147,34 @@ const AdminDashboard = () => {
                 <span className="w-6 h-6 rounded-full bg-white text-indigo-600 border border-slate-100 flex items-center justify-center font-bold text-lg">&rarr;</span>
               </Link>
             </div>
+          </Card>
+
+          <Card title="Upcoming Holidays" subtitle="Upcoming calendar events">
+            {getUpcomingHolidays().length === 0 ? (
+              <p className="text-sm font-semibold text-slate-500 py-3">No upcoming holidays scheduled.</p>
+            ) : (
+              <div className="flex flex-col gap-3 py-2">
+                {getUpcomingHolidays().map((h, idx) => (
+                  <div
+                    key={h._id || idx}
+                    className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-slate-100/55 transition-colors font-semibold text-slate-700 text-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-rose-50 text-rose-600">
+                        <FiCalendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">{h.name}</p>
+                        <p className="text-[10px] text-slate-400 font-semibold">{h.description || 'Public Holiday'}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-600 bg-white border border-slate-100 px-2.5 py-1 rounded-xl shadow-sm">
+                      {new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 
