@@ -26,12 +26,11 @@ const InAppNotificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['leave_applied', 'leave_approved', 'leave_rejected', 'leave_cancelled', 'leave_sent_back'],
+      enum: ['leave_applied', 'leave_approved', 'leave_rejected', 'leave_cancelled', 'leave_sent_back', 'document'],
       required: true,
     },
     referenceId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'LeaveRequest',
       required: true,
     },
     isRead: {

@@ -47,6 +47,7 @@ import LeavePolicies from './pages/leave/LeavePolicies';
 import LeaveBalances from './pages/leave/LeaveBalances';
 import LeaveRequests from './pages/leave/LeaveRequests';
 import LeaveCalendar from './pages/leave/LeaveCalendar';
+import Documents from './pages/Documents';
 
 // Helper component to redirect root "/" to the appropriate dashboard
 const HomeRedirect = () => {
@@ -381,6 +382,17 @@ function App() {
             }
           />
 
+          {/* Document Management Routes */}
+          <Route
+            path="/documents"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="document.view">
+                  <Documents />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
 
           {/* Fallback to root */}
           <Route path="*" element={<Navigate to="/" replace />} />

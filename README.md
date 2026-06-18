@@ -108,6 +108,7 @@ MongoDB (Single DB)
 | Roles & Permissions | `/api/v1/roles` | RBAC role definitions and dynamic permissions mapping |
 | Audit Logs | `/api/v1/audit-logs` | Immutable activity trail tracking oldData vs newData |
 | Leave Management | `/api/v1/leave` | LMS: types, policies, balances, requests pipeline, calendar |
+| Document Management | `/api/v1/documents` & `/api/v1/employees/:id/documents` | Employee Document Hub: upload, view, verify, acknowledge, and secure download |
 
 ---
 
@@ -379,6 +380,33 @@ Immutable activity trail. No `updatedAt`.
 
 ---
 
+### Collection: `employee_documents`
+Stores employee-uploaded files and company policies managed by HR/Admins with tenant isolation.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `employeeId` | ObjectId | ❌ | Ref → users (required if `isCompanyPolicy` is false) |
+| `category` | String | ✅ | e.g. `identity`, `education`, `experience`, `company_policy`, `other` |
+| `documentType` | String | ✅ | e.g. `aadhaar`, `pan`, `passport`, `degree`, `payslip`, `sop`, `handbook` |
+| `originalFileName` | String | ✅ | Original uploaded file name |
+| `cloudinaryPublicId`| String | ✅ | Secure Cloudinary public identifier |
+| `cloudinaryUrl` | String | ✅ | Cloudinary CDN delivery URL |
+| `fileSize` | Number | ✅ | File size in bytes |
+| `mimeType` | String | ✅ | File MIME type |
+| `uploadedBy` | ObjectId | ✅ | Ref → users |
+| `isVisibleToEmployee`| Boolean| ✅ | Visibility flag (default: true) |
+| `isDownloadable` | Boolean | ✅ | Download permission flag (default: true) |
+| `expiryDate` | Date | ❌ | Expiry date mapping (optional) |
+| `verificationStatus`| String | ✅ | `pending` / `verified` / `rejected` |
+| `acknowledged` | Boolean | ✅ | Read acknowledgement trail flag (default: false) |
+| `acknowledgedAt` | Date | ❌ | Acknowledged date mapping (optional) |
+| `isCompanyPolicy` | Boolean | ✅ | Policy visibility flag (default: false) |
+
+**Indexes:** `{ companyId: 1, employeeId: 1, documentType: 1 }`
+
+---
+
 ## Folder & File Structure
 
 ```
@@ -440,6 +468,7 @@ d:\Company\HRMS\
     │   │   ├── leave-balance.model.js
     │   │   ├── leave-request.model.js
     │   │   ├── in-app-notification.model.js
+    │   │   ├── employee-document.model.js
     │   │   └── audit-log.model.js
     │   ├── services/
     │   │   ├── auth.service.js
@@ -458,6 +487,7 @@ d:\Company\HRMS\
     │   │   ├── leave-request.service.js ← Validations, approvals workflow, and balance deduction
     │   │   ├── leave-calendar.service.js
     │   │   ├── leave-notification.service.js
+    │   │   ├── cloudinary.service.js
     │   │   └── auditLog.service.js
     │   ├── controllers/
     │   │   ├── auth.controller.js
@@ -476,11 +506,13 @@ d:\Company\HRMS\
     │   │   ├── leave-request.controller.js
     │   │   ├── leave-calendar.controller.js
     │   │   ├── leave-notification.controller.js
+    │   │   ├── employee-document.controller.js
     │   │   └── audit-log.controller.js
     │   ├── middlewares/
     │   │   ├── auth.middleware.js     ← JWT Bearer token validator
     │   │   ├── rbac.middleware.js     ← RBAC authorization middleware
     │   │   ├── validate.middleware.js ← Zod schema request body validator
+    │   │   ├── upload.middleware.js   ← Multer memory storage parser for uploads
     │   │   └── error.middleware.js    ← Formats CastError, Zod, and Mongo duplicate keys
     │   ├── routes/
     │   │   ├── index.js               ← Aggregates routes at /api/v1
@@ -495,6 +527,7 @@ d:\Company\HRMS\
     │   │   ├── role.routes.js
     │   │   ├── permission.routes.js
     │   │   ├── leave.routes.js
+    │   │   ├── employee-document.routes.js
     │   │   └── audit-log.routes.js
     │   └── utils/
     │       └── auth.utils.js          ← Token signing and hash checking utilities
@@ -524,6 +557,7 @@ Registered with explicit names using the 3rd argument of `mongoose.model()` to p
 | `leave-balance.model.js` | `LeaveBalance`, `LeaveBalanceSchema`, `'leave_balances'` |
 | `leave-request.model.js` | `LeaveRequest`, `LeaveRequestSchema`, `'leave_requests'` |
 | `in-app-notification.model.js` | `InAppNotification`, `InAppNotificationSchema`, `'in_app_notifications'` |
+| `employee-document.model.js` | `EmployeeDocument`, `EmployeeDocumentSchema`, `'employee_documents'` |
 | `audit-log.model.js` | `AuditLog`, `AuditLogSchema`, `'audit_logs'` |
 
 ### Services (`src/services/`)
@@ -541,6 +575,7 @@ Registered with explicit names using the 3rd argument of `mongoose.model()` to p
 * `leave-request.service.js` — Handles leave applications, past/weekend/holiday validators, overlaps, and multi-stage workflow transitions.
 * `leave-calendar.service.js` — Parallel query runner gathering approved leaves and holidays for grid displays.
 * `leave-notification.service.js` — Coordinates in-app notifications (triggers for leave applied, manager approved, HR approved, rejected, and cancelled), inbox fetching, and clearing all notifications.
+* `cloudinary.service.js` — Integrates Cloudinary uploads, resource deletion, and secure signed URLs.
 * `auditLog.service.js` — Write-out helper to capture oldData vs newData snapshots for system audits.
 
 ---
@@ -630,6 +665,17 @@ Base URL: `http://localhost:5000/api/v1`
 * `PUT /leave/notifications/:id/read` — Protected. Mark notification as read.
 * `DELETE /leave/notifications` — Protected. Clear all notifications from database.
 
+### Document Management (`/documents` & `/employees`)
+* `POST /documents/upload` — Protected (`document.upload`). Upload a document for an employee or a company policy.
+* `GET /documents/dashboard` — Protected (`document.view`). Retrieve documents list for frontend tabs with dynamic polling.
+* `GET /documents/summary` — Protected (`document.view`). Retrieve summary count metrics of documents.
+* `GET /documents/:documentId/download` — Protected (`document.download`). Generate a signed secure download URL.
+* `DELETE /documents/:documentId` — Protected (`document.delete`). Delete document from DB and Cloudinary.
+* `PATCH /documents/:documentId/verify` — Protected (`document.verify`). Verify or reject an employee-uploaded document.
+* `POST /documents/:documentId/acknowledge` — Protected (`document.view`). Employee acknowledgement trail mapping.
+* `GET /employees/:employeeId/documents` — Protected (`document.view`). Get documents of a specific employee.
+* `POST /employees/:employeeId/documents` — Protected (`document.upload`). Direct upload for a specific employee.
+
 ---
 
 ## Permission Keys Reference
@@ -683,6 +729,11 @@ Base URL: `http://localhost:5000/api/v1`
 | `leave.sendBack` | leave | sendBack | Send back leave requests for edits |
 | `leave.cancel` | leave | cancel | Cancel submitted requests |
 | `leaveCalendar.view` | leaveCalendar | view | Access monthly Leave Calendar |
+| `document.view` | document | view | View documents and summary dashboards |
+| `document.upload` | document | upload | Upload employee documents or company policies |
+| `document.delete` | document | delete | Remove documents permanently from Cloudinary & DB |
+| `document.download` | document | download | Download employee or company documents |
+| `document.verify` | document | verify | Approve or reject employee document uploads |
 
 ---
 
@@ -721,6 +772,11 @@ Seeded company roles map to permissions based on the corporate access matrix bel
 | `leave.sendBack` | ✅ | ✅ | ✅ | ❌ |
 | `leave.cancel` | ✅ | ✅ | ✅ | ✅ |
 | `leaveCalendar.view`| ✅ | ✅ | ✅ | ✅ |
+| `document.view` | ✅ | ✅ | ✅ | ✅ |
+| `document.upload` | ✅ | ✅ | ❌ | ❌ |
+| `document.delete` | ✅ | ✅ | ❌ | ❌ |
+| `document.download` | ✅ | ✅ | ✅ | ✅ |
+| `document.verify` | ✅ | ✅ | ❌ | ❌ |
 
 ---
 

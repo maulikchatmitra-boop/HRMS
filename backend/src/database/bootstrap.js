@@ -90,7 +90,14 @@ const systemPermissions = [
 
   // Leave Calendar / History permissions
   { module: 'leaveCalendar', action: 'view', permissionKey: 'leaveCalendar.view' },
-  { module: 'leaveHistory',  action: 'view', permissionKey: 'leaveHistory.view' }
+  { module: 'leaveHistory',  action: 'view', permissionKey: 'leaveHistory.view' },
+
+  // Document module permissions
+  { module: 'document', action: 'view',     permissionKey: 'document.view' },
+  { module: 'document', action: 'upload',   permissionKey: 'document.upload' },
+  { module: 'document', action: 'delete',   permissionKey: 'document.delete' },
+  { module: 'document', action: 'download', permissionKey: 'document.download' },
+  { module: 'document', action: 'verify',   permissionKey: 'document.verify' }
 ];
 
 export const autoBootstrapDatabase = async () => {
@@ -145,7 +152,9 @@ export const autoBootstrapDatabase = async () => {
             'leave.reject',
             'leave.sendBack',
             'leaveCalendar.view',
-            'leaveHistory.view'
+            'leaveHistory.view',
+            'document.view',
+            'document.download'
           ];
         } else {
           // Employees / Default roles get view-only base and standard own leaves
@@ -155,7 +164,9 @@ export const autoBootstrapDatabase = async () => {
             'leave.apply',
             'leave.viewOwn',
             'leave.cancel',
-            'leaveCalendar.view'
+            'leaveCalendar.view',
+            'document.view',
+            'document.download'
           ];
         }
 

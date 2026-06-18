@@ -18,6 +18,7 @@ import {
   FiSettings,
   FiChevronDown,
   FiChevronUp,
+  FiFileText,
 } from 'react-icons/fi';
 
 const Sidebar = () => {
@@ -46,6 +47,7 @@ const Sidebar = () => {
         { path: '/admin/holidays', label: 'Holidays', icon: FiCalendar, permission: 'holiday.view' },
         { path: '/admin/roles', label: 'Roles & Permissions', icon: FiShield, permission: 'role.view' },
         { path: '/admin/audit-logs', label: 'Audit Logs', icon: FiList, permission: 'audit.view' },
+        { path: '/documents', label: 'Documents', icon: FiFileText, permission: 'document.view' },
       ];
       return links.filter(link => !link.permission || hasPermission(user, link.permission));
     }
@@ -95,6 +97,10 @@ const Sidebar = () => {
       links.push({ path: '/hr/audit-logs', label: 'Audit Logs', icon: FiList });
     }
 
+    // 7. Documents
+    if (hasPermission(user, 'document.view')) {
+      links.push({ path: '/documents', label: 'Documents', icon: FiFileText });
+    }
 
     return links;
   };
