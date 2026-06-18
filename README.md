@@ -834,9 +834,9 @@ Create `backend/.env` with your Mongo connection string and JWT Secrets.
 cd ../backend
 npm run seed:it
 ```
-This drops the database, seeds 3 real-world companies (**INFY**, **WIPRO**, **TCS**), configures default roles, and generates demo accounts for testing. All core permissions and role mapping checks are automatically synced on startup when running the server.
+This drops the database and seeds 3 real-world companies (**INFY**, **WIPRO**, **TCS**), along with default roles, departments, designations, branches, shifts, and testing users directly. No permission mappings or configurations are done during seeding, keeping it clean and pure dummy data entry.
 
-### Step 5 — Start Development Servers
+### Step 4 — Start Development Servers
 ```bash
 # Run backend
 cd backend
@@ -849,23 +849,16 @@ npm run dev
 
 ---
 
-## Seeding Workflow
+## Automatic Database Bootstrapping & Seeding Workflow
 
-```
-Phase 1: Seed Global permissions
-  └─ npm run seed
-        └─ Connects to MongoDB
-        └─ Inserts all static permission keys
-        └─ Disconnects
+The application employs a zero-configuration automatic bootstrapping model:
 
-Phase 2: Seed IT Company Data
-  └─ npm run seed:it
-        └─ Creates 3 company profiles (Infosys, Wipro, TCS)
-        └─ Seeds Departments (DEV, QA, HR), Designations, Branches, Shifts
-        └─ Creates default Role permissions mappings
-        └─ Onboards default users (Admins, HRs, Managers, Employees)
-        └─ Run migration script to link leaves permissions to role permissions
-```
+1. **Zero-Migration Database Setup**:
+   - Running `npm run dev` in the backend automatically checks, creates, and syncs all core permissions and default role mappings (`Company Admin`, `HR`, `Manager`, `Employee`) dynamically on startup. There are no manual setup commands or migration scripts required.
+   
+2. **Clean Seeding Scripts**:
+   - `npm run seed:it` (or `npm run seed`) drops the database and inserts *only* clean dummy records (Companies, Roles, Users, Departments, Designations, Branches, Shifts, and Holidays) directly into MongoDB and disconnects.
+   - When the dev server starts next, it detects the new companies and automatically maps all standard role permissions on the fly.
 
 ---
 
