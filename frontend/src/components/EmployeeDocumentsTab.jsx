@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axiosClient, { extractErrorMessage } from '../api/axiosClient';
 import Button from './Button';
 import Modal from './Modal';
-import Input from './Input';
 import Spinner from './Spinner';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/user.utils';
@@ -202,7 +201,7 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
           link.click();
           document.body.removeChild(link);
           window.URL.revokeObjectURL(blobUrl);
-        } catch (fetchErr) {
+        } catch {
           // Fallback to direct anchor link download if fetch fails (e.g. strict CSP / CORS)
           const link = document.createElement('a');
           link.href = downloadUrl;
@@ -241,16 +240,20 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
             placeholder="Search documents..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none"
+            className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl outline-none transition-colors duration-200 hover:bg-slate-100/55 hover:border-slate-300 focus:bg-white focus:border-indigo-500 placeholder:text-slate-400/80"
           />
         </div>
         <div className="flex items-center gap-2">
           {mode === 'manage' && (
-            <Button icon={FiUploadCloud} onClick={() => { resetForm(); setIsUploadModalOpen(true); }}>
+            <Button 
+              icon={FiUploadCloud} 
+              onClick={() => { resetForm(); setIsUploadModalOpen(true); }}
+              className="font-semibold tracking-wide transition-colors duration-200 rounded-xl px-4.5 py-2.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white border-none cursor-pointer"
+            >
               Upload Document
             </Button>
           )}
-          <button onClick={fetchDocuments} className="p-2 border rounded-xl hover:bg-slate-50 cursor-pointer">
+          <button onClick={fetchDocuments} className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-200 cursor-pointer text-slate-400 hover:text-slate-600">
             <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -261,8 +264,23 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
         {loading && documents.length === 0 ? (
           <Spinner size="md" />
         ) : filteredDocs.length === 0 ? (
-          <div className="bg-white border rounded-3xl p-12 text-center text-slate-500">
-            No documents found.
+          <div className="relative w-full flex flex-col items-center justify-center py-20 px-6 text-center">
+            {/* Glowing Illustration / Icon Container */}
+            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-slate-50 to-slate-100/80 flex items-center justify-center mb-6 text-slate-400/90 shadow-2xs relative group">
+              <div className="absolute inset-0 rounded-full bg-indigo-500/5 blur-xl group-hover:bg-indigo-500/10 transition-all duration-500"></div>
+              <FiFileText className="w-9 h-9 stroke-[1.5]" />
+            </div>
+
+            {/* Empty State Text */}
+            <h3 className="text-base font-extrabold text-slate-800 tracking-tight">
+              {searchQuery ? 'No Results Found' : 'No Documents Found'}
+            </h3>
+            <p className="text-xs text-slate-400 max-w-xs mt-2 leading-relaxed">
+              {searchQuery 
+                ? `We couldn't find any documents matching "${searchQuery}". Try checking your spelling or search terms.`
+                : "We couldn't find any documents under this category."
+              }
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -425,16 +443,16 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
 
       {/* Upload Modal */}
       <Modal isOpen={isUploadModalOpen} onClose={() => { resetForm(); setIsUploadModalOpen(false); }} title="Upload Document">
-        <form onSubmit={handleUploadSubmit} className="space-y-5 text-left">
+        <form onSubmit={handleUploadSubmit} className="space-y-4 text-left">
           {uploadError && (
-            <div className="p-3.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold flex items-center gap-2">
-              <FiX className="w-4 h-4 flex-shrink-0" />
+            <div className="p-3 bg-rose-50/60 border border-rose-100 text-rose-550 rounded-xl text-[11px] font-semibold flex items-center gap-2">
+              <FiX className="w-3.5 h-3.5 flex-shrink-0" />
               <span>{uploadError}</span>
             </div>
           )}
           {uploadSuccess && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-xl text-xs font-bold flex items-center gap-2 animate-pulse">
-              <FiCheck className="w-4 h-4 flex-shrink-0" />
+            <div className="p-3 bg-emerald-50/60 border border-emerald-100 text-emerald-600 rounded-xl text-[11px] font-semibold flex items-center gap-2 animate-pulse">
+              <FiCheck className="w-3.5 h-3.5 flex-shrink-0" />
               <span>{uploadSuccess}</span>
             </div>
           )}
@@ -454,42 +472,42 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                 setDocumentType(types[0] || '');
               }
             }}
-            className={`p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all ${
+            className={`p-3.5 rounded-xl flex items-center justify-between cursor-pointer transition-colors ${
               isCompanyPolicy 
-                ? 'bg-indigo-50/40 shadow-2xs' 
-                : 'bg-slate-50/60 hover:bg-slate-100/60'
+                ? 'bg-indigo-50/30' 
+                : 'bg-slate-50/50 hover:bg-slate-100/40'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-xl ${isCompanyPolicy ? 'bg-indigo-100 text-indigo-655 font-bold' : 'bg-slate-100 text-slate-500'}`}>
-                <FiFileText className="w-5 h-5" />
+            <div className="flex items-center gap-2.5">
+              <div className={`p-2 rounded-lg ${isCompanyPolicy ? 'bg-indigo-100/60 text-indigo-600 font-semibold' : 'bg-slate-100 text-slate-400'}`}>
+                <FiFileText className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-sm font-bold text-slate-800">Company Policy / Global Document</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Visible and downloadable by all company tenants globally</p>
+              <div className="text-left">
+                <p className="text-xs font-semibold text-slate-700">Company Policy / Global Document</p>
+                <p className="text-[10px] text-slate-400/90 mt-0.5">Visible and downloadable by all employees</p>
               </div>
             </div>
-            <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+            <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
               isCompanyPolicy 
                 ? 'bg-indigo-600 border-indigo-600 text-white' 
-                : 'border-slate-350 bg-white'
+                : 'border-slate-300 bg-white'
             }`}>
-              {isCompanyPolicy && <FiCheck className="w-3.5 h-3.5" />}
+              {isCompanyPolicy && <FiCheck className="w-3 h-3" />}
             </div>
           </div>
 
           {/* Target Employee Dropdown */}
           {!isCompanyPolicy && !employeeId && (
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="targetEmployeeId" className="text-xs font-bold text-slate-500 tracking-wider uppercase">
-                Select Employee <span className="text-rose-500">*</span>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="targetEmployeeId" className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
+                Select Employee <span className="text-rose-400">*</span>
               </label>
               <div className="relative">
                 <select
                   id="targetEmployeeId"
                   value={targetEmployeeId}
                   onChange={(e) => setTargetEmployeeId(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-slate-50/80 rounded-xl text-slate-850 text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-600/20 transition-all duration-200 appearance-none cursor-pointer border border-slate-100/50"
+                  className="w-full pl-3 pr-8 py-2 bg-slate-50/50 rounded-xl text-slate-700 text-xs focus:outline-none focus:bg-white focus:border-indigo-400 transition-colors appearance-none cursor-pointer border border-slate-200/60"
                 >
                   <option value="">-- Choose Employee --</option>
                   {allEmployees.map((emp) => (
@@ -498,7 +516,7 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                     </option>
                   ))}
                 </select>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-405">
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -509,9 +527,9 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
 
           {/* If isCompanyPolicy is true, show one specialized dropdown. Otherwise show Category & Type grid */}
           {isCompanyPolicy ? (
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="globalDocType" className="text-xs font-bold text-slate-500 tracking-wider uppercase">
-                Global Document Type <span className="text-rose-500">*</span>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="globalDocType" className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
+                Global Document Type <span className="text-rose-400">*</span>
               </label>
               <div className="relative">
                 <select
@@ -521,7 +539,7 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                     setDocumentType(e.target.value);
                     setCategory(DOCUMENT_CATEGORIES.OTHER);
                   }}
-                  className="w-full pl-4 pr-10 py-3 bg-slate-50/80 rounded-xl text-slate-850 text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-600/20 transition-all duration-200 appearance-none cursor-pointer border border-slate-100/50"
+                  className="w-full pl-3 pr-8 py-2 bg-slate-50/50 rounded-xl text-slate-700 text-xs focus:outline-none focus:bg-white focus:border-indigo-400 transition-colors appearance-none cursor-pointer border border-slate-200/60"
                 >
                   <option value={DOCUMENT_TYPES.COMPANY_POLICY_SOP}>Company Policy / SOP</option>
                   <option value={DOCUMENT_TYPES.EMPLOYEE_HANDBOOK}>Employee Handbook & Code of Conduct</option>
@@ -531,7 +549,7 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                   <option value={DOCUMENT_TYPES.BENEFITS_INSURANCE}>Benefits & Insurance Guide</option>
                   <option value={DOCUMENT_TYPES.OTHER}>Other Company Related Document</option>
                 </select>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-405">
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -540,17 +558,17 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
             </div>
           ) : (
             /* Category & Type */
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="category" className="text-xs font-bold text-slate-500 tracking-wider uppercase">
-                  Document Category <span className="text-rose-500">*</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4.5">
+              <div className="flex flex-col gap-1">
+                <label htmlFor="category" className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
+                  Document Category <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
                   <select
                     id="category"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full pl-4 pr-10 py-3 bg-slate-50/80 rounded-xl text-slate-850 text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-600/20 transition-all duration-200 appearance-none cursor-pointer border border-slate-100/50"
+                    className="w-full pl-3 pr-8 py-2 bg-slate-50/50 rounded-xl text-slate-700 text-xs focus:outline-none focus:bg-white focus:border-indigo-400 transition-colors appearance-none cursor-pointer border border-slate-200/60"
                   >
                     {Object.keys(DOCUMENT_CATEGORIES).map((cat) => (
                       <option key={cat} value={cat}>
@@ -558,7 +576,7 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                       </option>
                     ))}
                   </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-405">
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -566,16 +584,16 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="documentType" className="text-xs font-bold text-slate-500 tracking-wider uppercase">
-                  Document Type <span className="text-rose-500">*</span>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="documentType" className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
+                  Document Type <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
                   <select
                     id="documentType"
                     value={documentType}
                     onChange={(e) => setDocumentType(e.target.value)}
-                    className="w-full pl-4 pr-10 py-3 bg-slate-50/80 rounded-xl text-slate-850 text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-600/20 transition-all duration-200 appearance-none cursor-pointer border border-slate-100/50"
+                    className="w-full pl-3 pr-8 py-2 bg-slate-50/50 rounded-xl text-slate-700 text-xs focus:outline-none focus:bg-white focus:border-indigo-400 transition-colors appearance-none cursor-pointer border border-slate-200/60"
                   >
                     {(CATEGORY_DOCUMENT_TYPES[category] || []).map((type) => (
                       <option key={type} value={type}>
@@ -583,7 +601,7 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                       </option>
                     ))}
                   </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-455">
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -594,8 +612,8 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
           )}
 
           {/* Expiry Date */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="expiryDate" className="text-xs font-bold text-slate-500 tracking-wider uppercase">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="expiryDate" className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
               Expiry Date
             </label>
             <input
@@ -603,25 +621,25 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
               id="expiryDate"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50/80 rounded-xl text-slate-855 text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-600/20 transition-all duration-200 cursor-pointer border border-slate-100/50"
+              className="w-full px-3 py-2 bg-slate-50/50 rounded-xl text-slate-700 text-xs focus:outline-none focus:bg-white focus:border-indigo-400 transition-colors cursor-pointer border border-slate-200/60"
             />
           </div>
 
           {/* Toggles */}
           {!isCompanyPolicy && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-1 bg-slate-50/40 p-4 rounded-2xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-1 bg-slate-50/30 p-3 rounded-xl">
               <div 
                 onClick={() => setIsVisibleToEmployee(!isVisibleToEmployee)}
                 className="flex items-center gap-2.5 cursor-pointer select-none"
               >
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
                   isVisibleToEmployee 
                     ? 'bg-indigo-600 border-indigo-600 text-white' 
                     : 'border-slate-300 bg-white'
                 }`}>
-                  {isVisibleToEmployee && <FiCheck className="w-3 h-3 animate-in fade-in" />}
+                  {isVisibleToEmployee && <FiCheck className="w-2.5 h-2.5 animate-in fade-in" />}
                 </div>
-                <label className="text-xs font-semibold text-slate-705 cursor-pointer">
+                <label className="text-[11px] font-semibold text-slate-500 cursor-pointer">
                   Visible to Employee
                 </label>
               </div>
@@ -630,14 +648,14 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                 onClick={() => setIsDownloadable(!isDownloadable)}
                 className="flex items-center gap-2.5 cursor-pointer select-none"
               >
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
                   isDownloadable 
                     ? 'bg-indigo-600 border-indigo-600 text-white' 
                     : 'border-slate-300 bg-white'
                 }`}>
-                  {isDownloadable && <FiCheck className="w-3 h-3 animate-in fade-in" />}
+                  {isDownloadable && <FiCheck className="w-2.5 h-2.5 animate-in fade-in" />}
                 </div>
-                <label className="text-xs font-semibold text-slate-705 cursor-pointer">
+                <label className="text-[11px] font-semibold text-slate-500 cursor-pointer">
                   Downloadable by Employee
                 </label>
               </div>
@@ -646,14 +664,14 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                 onClick={() => setSendNotification(!sendNotification)}
                 className="flex items-center gap-2.5 sm:col-span-2 mt-1 cursor-pointer select-none"
               >
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
                   sendNotification 
                     ? 'bg-indigo-600 border-indigo-600 text-white' 
                     : 'border-slate-300 bg-white'
                 }`}>
-                  {sendNotification && <FiCheck className="w-3 h-3 animate-in fade-in" />}
+                  {sendNotification && <FiCheck className="w-2.5 h-2.5 animate-in fade-in" />}
                 </div>
-                <label className="text-xs font-semibold text-slate-705 cursor-pointer">
+                <label className="text-[11px] font-semibold text-slate-500 cursor-pointer">
                   Send In-App Notification
                 </label>
               </div>
@@ -662,29 +680,29 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
 
           {/* File Input */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-500 tracking-wider uppercase">
-              Select Document File <span className="text-rose-500">*</span>
+            <label className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
+              Select Document File <span className="text-rose-400">*</span>
             </label>
-            <div className="border-2 border-dashed border-slate-100 hover:border-indigo-550 bg-slate-50/40 hover:bg-indigo-50/5 rounded-2xl p-6 transition-all relative flex flex-col items-center justify-center text-center group cursor-pointer">
+            <div className="border border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50/30 hover:bg-indigo-50/5 rounded-xl p-4.5 transition-colors relative flex flex-col items-center justify-center text-center group cursor-pointer">
               <input
                 type="file"
                 onChange={(e) => setFile(e.target.files[0])}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
-              <FiUploadCloud className="w-8 h-8 text-slate-400 group-hover:text-indigo-650 transition-colors mb-2" />
+              <FiUploadCloud className="w-6 h-6 text-slate-400 group-hover:text-indigo-500 transition-colors mb-1.5" />
               {file ? (
                 <div>
-                  <p className="text-sm font-bold text-slate-800">{file.name}</p>
-                  <p className="text-xs text-slate-400 font-semibold mt-1">
+                  <p className="text-xs font-semibold text-slate-700">{file.name}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
                     {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm font-bold text-slate-755 group-hover:text-indigo-650 transition-colors">
+                  <p className="text-xs font-semibold text-slate-600 group-hover:text-indigo-600 transition-colors">
                     Click to upload or drag & drop
                   </p>
-                  <p className="text-xs text-slate-400 font-medium mt-1">
+                  <p className="text-[10px] text-slate-400/80 mt-0.5">
                     PDF, JPG, PNG or DOC (Max 10MB)
                   </p>
                 </div>
@@ -693,11 +711,11 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <Button variant="secondary" onClick={() => { resetForm(); setIsUploadModalOpen(false); }} type="button">
+          <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
+            <Button size="sm" variant="secondary" onClick={() => { resetForm(); setIsUploadModalOpen(false); }} type="button" className="font-semibold rounded-lg">
               Cancel
             </Button>
-            <Button type="submit" loading={uploadLoading}>
+            <Button size="sm" type="submit" loading={uploadLoading} className="font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500">
               Upload File
             </Button>
           </div>

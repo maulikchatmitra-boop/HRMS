@@ -154,15 +154,7 @@ export const login = async (companyCode, email, password) => {
     cleanUser.permissions = [];
   }
 
-  const readOnlyPermissions = ['employee.view', 'holiday.view', 'department.view', 'branch.view', 'company.view'];
-  if (cleanUser && !cleanUser.isSuperAdmin && cleanUser.companyId) {
-    if (!cleanUser.permissions) cleanUser.permissions = [];
-    readOnlyPermissions.forEach(p => {
-      if (!cleanUser.permissions.includes(p)) {
-        cleanUser.permissions.push(p);
-      }
-    });
-  }
+
   cleanUser.companyCode = company.companyCode;
   cleanUser.companyName = company.companyName;
   cleanUser.companyStatus = company.status;
@@ -358,15 +350,7 @@ export const getCurrentUser = async (userId, companyId) => {
     cleanUser.permissions = [];
   }
 
-  const readOnlyPermissions = ['employee.view', 'holiday.view', 'department.view', 'branch.view', 'company.view'];
-  if (cleanUser && !cleanUser.isSuperAdmin && cleanUser.companyId) {
-    if (!cleanUser.permissions) cleanUser.permissions = [];
-    readOnlyPermissions.forEach(p => {
-      if (!cleanUser.permissions.includes(p)) {
-        cleanUser.permissions.push(p);
-      }
-    });
-  }
+
   return cleanUser;
 };
 
@@ -435,15 +419,7 @@ export const updateSelfProfile = async (userId, companyId, updateData) => {
     cleanUser.permissions = [];
   }
 
-  const readOnlyPermissions = ['employee.view', 'holiday.view', 'department.view', 'branch.view', 'company.view'];
-  if (cleanUser && !cleanUser.isSuperAdmin && cleanUser.companyId) {
-    if (!cleanUser.permissions) cleanUser.permissions = [];
-    readOnlyPermissions.forEach(p => {
-      if (!cleanUser.permissions.includes(p)) {
-        cleanUser.permissions.push(p);
-      }
-    });
-  }
+
   return cleanUser;
 };
 
@@ -471,11 +447,7 @@ export const hasPermission = async (userId, permissionKey) => {
     return true;
   }
 
-  // Allow active tenant users to view directories/counts
-  const readOnlyPermissions = ['employee.view', 'holiday.view', 'department.view', 'branch.view', 'company.view'];
-  if (readOnlyPermissions.includes(permissionKey) && user.companyId) {
-    return true;
-  }
+
 
   // 2. Fetch the permission ID from global database
   const permission = await Permission.findOne({ permissionKey });
@@ -546,15 +518,7 @@ export const refreshSession = async (refreshToken) => {
       cleanUser.permissions = [];
     }
 
-    const readOnlyPermissions = ['employee.view', 'holiday.view', 'department.view', 'branch.view', 'company.view'];
-    if (cleanUser && !cleanUser.isSuperAdmin && cleanUser.companyId) {
-      if (!cleanUser.permissions) cleanUser.permissions = [];
-      readOnlyPermissions.forEach(p => {
-        if (!cleanUser.permissions.includes(p)) {
-          cleanUser.permissions.push(p);
-        }
-      });
-    }
+
 
     return {
       accessToken: newAccessToken,

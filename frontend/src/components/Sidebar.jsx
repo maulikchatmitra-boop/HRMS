@@ -40,10 +40,6 @@ const Sidebar = () => {
       const links = [
         { path: '/admin/dashboard', label: 'Dashboard', icon: FiGrid },
         { path: '/admin/employees', label: 'Employees', icon: FiUsers, permission: 'employee.view' },
-        { path: '/admin/departments', label: 'Departments', icon: FiFolder, permission: 'department.view' },
-        { path: '/admin/designations', label: 'Designations', icon: FiAward, permission: 'designation.view' },
-        { path: '/admin/branches', label: 'Branches', icon: FiMapPin, permission: 'branch.view' },
-        { path: '/admin/shifts', label: 'Shifts', icon: FiClock, permission: 'shift.view' },
         { path: '/admin/holidays', label: 'Holidays', icon: FiCalendar, permission: 'holiday.view' },
         { path: '/admin/roles', label: 'Roles & Permissions', icon: FiShield, permission: 'role.view' },
         { path: '/admin/audit-logs', label: 'Audit Logs', icon: FiList, permission: 'audit.view' },
@@ -73,16 +69,6 @@ const Sidebar = () => {
       }
     }
 
-    // 3. Departments
-    if (hasPermission(user, 'department.view')) {
-      links.push({ path: '/hr/departments', label: 'Departments', icon: FiFolder });
-    }
-
-    // 4. Designations
-    if (hasPermission(user, 'designation.view')) {
-      links.push({ path: '/hr/designations', label: 'Designations', icon: FiAward });
-    }
-
     // 5. Holidays
     if (hasPermission(user, 'holiday.view')) {
       if (category === 'Employee') {
@@ -102,6 +88,30 @@ const Sidebar = () => {
       links.push({ path: '/documents', label: 'Documents', icon: FiFileText });
     }
 
+    return links;
+  };
+
+  const getStructureSetupLinks = () => {
+    const links = [];
+    const prefix = getRoleCategory(user.role?.roleName) === 'Company Admin' ? '/admin' : '/hr';
+
+    if (hasPermission(user, 'department.view')) {
+      links.push({ path: `${prefix}/departments`, label: 'Departments', icon: FiFolder });
+    }
+    if (hasPermission(user, 'designation.view')) {
+      links.push({ path: `${prefix}/designations`, label: 'Designations', icon: FiAward });
+    }
+    return links;
+  };
+
+  const getBranchShiftLinks = () => {
+    const links = [];
+    if (hasPermission(user, 'branch.view')) {
+      links.push({ path: '/admin/branches', label: 'Branches', icon: FiMapPin });
+    }
+    if (hasPermission(user, 'shift.view')) {
+      links.push({ path: '/admin/shifts', label: 'Shifts', icon: FiClock });
+    }
     return links;
   };
 
@@ -127,10 +137,28 @@ const Sidebar = () => {
 
   const location = useLocation();
   const [leaveMenuOpen, setLeaveMenuOpen] = useState(location.pathname.startsWith('/leave'));
+  const [branchShiftMenuOpen, setBranchShiftMenuOpen] = useState(
+    location.pathname.startsWith('/admin/branches') || location.pathname.startsWith('/admin/shifts')
+  );
+  const [structureSetupMenuOpen, setStructureSetupMenuOpen] = useState(
+    location.pathname.includes('/departments') || location.pathname.includes('/designations')
+  );
 
   useEffect(() => {
     if (location.pathname.startsWith('/leave')) {
       setLeaveMenuOpen(true);
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin/branches') || location.pathname.startsWith('/admin/shifts')) {
+      setBranchShiftMenuOpen(true);
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname.includes('/departments') || location.pathname.includes('/designations')) {
+      setStructureSetupMenuOpen(true);
     }
   }, [location.pathname]);
 
@@ -168,6 +196,84 @@ const Sidebar = () => {
             </NavLink>
           );
         })}
+
+        {getStructureSetupLinks().length > 0 && (
+          <div className="pt-2">
+            <button
+              onClick={() => setStructureSetupMenuOpen(!structureSetupMenuOpen)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <FiFolder className="w-4 h-4 text-slate-500" />
+                <span>Organization</span>
+              </div>
+              {structureSetupMenuOpen ? <FiChevronUp className="w-4 h-4 text-slate-400" /> : <FiChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+
+            {structureSetupMenuOpen && (
+              <div className="pl-4 mt-1 space-y-1 border-l border-slate-100 ml-6">
+                {getStructureSetupLinks().map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <NavLink
+                      key={link.path}
+                      to={link.path}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                          isActive
+                            ? 'bg-indigo-50 text-indigo-600 shadow-xs font-bold'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                        }`
+                      }
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{link.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {getBranchShiftLinks().length > 0 && (
+          <div className="pt-2">
+            <button
+              onClick={() => setBranchShiftMenuOpen(!branchShiftMenuOpen)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <FiMapPin className="w-4 h-4 text-slate-500" />
+                <span>Branch & Shift</span>
+              </div>
+              {branchShiftMenuOpen ? <FiChevronUp className="w-4 h-4 text-slate-400" /> : <FiChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+
+            {branchShiftMenuOpen && (
+              <div className="pl-4 mt-1 space-y-1 border-l border-slate-100 ml-6">
+                {getBranchShiftLinks().map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <NavLink
+                      key={link.path}
+                      to={link.path}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                          isActive
+                            ? 'bg-indigo-50 text-indigo-600 shadow-xs font-bold'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                        }`
+                      }
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{link.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {getLeaveLinks().length > 0 && (
           <div className="pt-2">
