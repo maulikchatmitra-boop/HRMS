@@ -285,7 +285,7 @@ const LeaveTypes = () => {
         title={editItem ? 'Edit Leave Type' : 'Add Leave Type'}
         size="md"
       >
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           {formError && (
             <div className="p-3.5 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold rounded-xl">
               {formError}

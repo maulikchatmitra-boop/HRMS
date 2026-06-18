@@ -422,7 +422,7 @@ const LeavePolicies = () => {
         title={selectedPolicy ? 'Edit Leave Policy' : 'Create Leave Policy'}
         size="lg"
       >
-        <form onSubmit={handlePolicySubmit} className="flex flex-col gap-4">
+        <form onSubmit={handlePolicySubmit} noValidate className="flex flex-col gap-4">
           {policyFormError && (
             <div className="p-3.5 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold rounded-xl">
               {policyFormError}
@@ -520,7 +520,7 @@ const LeavePolicies = () => {
         title="Assign Leave Policy"
         size="lg"
       >
-        <form onSubmit={handleAssignSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleAssignSubmit} noValidate className="flex flex-col gap-4">
           <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl">
             <p className="text-xs text-indigo-700 font-bold leading-relaxed">
               Assignments map this policy to employee roles. When assigned, leave balance ledgers are created or synced automatically for matching employees.
@@ -559,6 +559,7 @@ const LeavePolicies = () => {
                         options={roles.map((r) => ({ value: r._id, label: r.roleName }))}
                         placeholder="Select Role..."
                         required
+                        error={!row.targetId && assignError ? 'Role selection is required.' : null}
                       />
                     </div>
                     <div>

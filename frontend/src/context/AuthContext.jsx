@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import axiosClient, { setAccessToken, getAccessToken } from '../api/axiosClient';
 
 const AuthContext = createContext(null);
@@ -7,6 +7,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const lastSyncTimeRef = useRef(0);
 
   // Restore session on app load
   useEffect(() => {
@@ -40,6 +41,20 @@ export const AuthProvider = ({ children }) => {
       window.removeEventListener('auth-logout', handleGlobalLogout);
     };
   }, []);
+
+  // Background polling failsafe to keep roles and permissions in sync in real-time
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Failsafe sync every 3 minutes, only if the user is active/tab is visible
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshPermissions();
+      }
+    }, 180000); // 3 minutes
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   const login = async (email, password, companyCode = '') => {
     try {
@@ -99,6 +114,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const syncSession = async () => {
+    const now = Date.now();
+    if (now - lastSyncTimeRef.current < 60000) return; // Throttle to max once per minute
+    lastSyncTimeRef.current = now;
+    await refreshPermissions();
+  };
+
   const value = {
     user,
     setUser,
@@ -108,6 +130,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     refreshPermissions,
+    syncSession,
     accessToken: getAccessToken(),
   };
 

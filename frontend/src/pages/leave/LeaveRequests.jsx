@@ -66,12 +66,15 @@ const LeaveRequests = () => {
   const [actionRemarks, setActionRemarks] = useState('');
   const [actionBtnLoading, setActionBtnLoading] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [actionRemarksError, setActionRemarksError] = useState('');
 
   const canApprove = hasPermission(user, 'leave.approve') || getRoleCategory(user.role?.roleName) === 'Manager';
   const canApply = hasPermission(user, 'leave.apply');
 
-  const fetchLeaveRequests = async () => {
-    setLoading(true);
+  const fetchLeaveRequests = async (isSilent = false) => {
+    if (!isSilent) {
+      setLoading(true);
+    }
     setError('');
 
     let requestType = 'my-requests';
@@ -134,6 +137,15 @@ const LeaveRequests = () => {
 
   useEffect(() => {
     fetchLeaveRequests();
+  }, [mainTab, approvalSubTab, employeeSubTab, page, leaveTypeFilter, fromDateFilter, toDateFilter]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchLeaveRequests(true);
+      }
+    }, 15000); // Poll every 15 seconds silently, only if tab is visible
+    return () => clearInterval(interval);
   }, [mainTab, approvalSubTab, employeeSubTab, page, leaveTypeFilter, fromDateFilter, toDateFilter]);
 
   useEffect(() => {
@@ -295,6 +307,7 @@ const LeaveRequests = () => {
       setApplyModalOpen(false);
       resetApplyForm();
       fetchLeaveRequests();
+      window.dispatchEvent(new Event('refreshNotifications'));
     } catch (err) {
       setApplyError(extractErrorMessage(err));
     } finally {
@@ -318,15 +331,17 @@ const LeaveRequests = () => {
     setPendingAction(action);
     setActionRemarks('');
     setActionError('');
+    setActionRemarksError('');
     setActionModalOpen(true);
   };
 
   const handleActionSubmit = async (e) => {
     e.preventDefault();
     setActionError('');
+    setActionRemarksError('');
 
     if ((pendingAction === 'reject' || pendingAction === 'send_back') && !actionRemarks.trim()) {
-      setActionError('Remarks are required for rejecting or sending back leave requests.');
+      setActionRemarksError('Remarks are required for rejecting or sending back leave requests.');
       return;
     }
 
@@ -340,6 +355,7 @@ const LeaveRequests = () => {
       setDetailModalOpen(false);
       setSelectedRequest(null);
       fetchLeaveRequests();
+      window.dispatchEvent(new Event('refreshNotifications'));
     } catch (err) {
       setActionError(extractErrorMessage(err));
     } finally {
@@ -355,6 +371,7 @@ const LeaveRequests = () => {
         remarks: 'Cancelled by employee',
       });
       fetchLeaveRequests();
+      window.dispatchEvent(new Event('refreshNotifications'));
     } catch (err) {
       alert(extractErrorMessage(err));
     }
@@ -615,7 +632,7 @@ const LeaveRequests = () => {
       {/* Apply Leave Modal */}
       {canApply && (
         <Modal isOpen={applyModalOpen} onClose={() => setApplyModalOpen(false)} title="Apply for Leave" size="md">
-          <form onSubmit={handleApplySubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleApplySubmit} noValidate className="flex flex-col gap-4">
             {applyError && (
               <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold rounded-xl">
                 {applyError}
@@ -867,7 +884,7 @@ const LeaveRequests = () => {
         title={`${pendingAction === 'approve' ? 'Approve' : pendingAction === 'reject' ? 'Reject' : 'Send Back'} Request`}
         size="md"
       >
-        <form onSubmit={handleActionSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleActionSubmit} noValidate className="flex flex-col gap-4">
           {actionError && (
             <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold rounded-xl">
               {actionError}
@@ -885,9 +902,13 @@ const LeaveRequests = () => {
             label="Remarks / Comments"
             name="actionRemarks"
             value={actionRemarks}
-            onChange={(e) => setActionRemarks(e.target.value)}
+            onChange={(e) => {
+              setActionRemarks(e.target.value);
+              if (e.target.value.trim()) setActionRemarksError('');
+            }}
             placeholder="Provide comments..."
             required={pendingAction !== 'approve'}
+            error={actionRemarksError}
           />
 
           <div className="flex justify-end gap-3 mt-4 border-t border-slate-100 pt-4">

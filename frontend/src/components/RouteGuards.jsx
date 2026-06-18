@@ -1,5 +1,5 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Spinner from './Spinner';
 import DashboardLayout from '../layouts/DashboardLayout';
@@ -8,7 +8,14 @@ import { getRoleCategory, hasPermission, getRoleDashboard } from '../utils/user.
 
 // Route wrapper for authenticated users
 export const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, syncSession } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (isAuthenticated && syncSession) {
+      syncSession();
+    }
+  }, [location.pathname, isAuthenticated]);
 
   if (loading) {
     return <Spinner fullPage />;

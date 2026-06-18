@@ -418,12 +418,12 @@ d:\Company\HRMS\
 └── backend/                           ← Backend API Server
     ├── package.json
     ├── scripts/
-    │   ├── seed.js                    ← Global permissions seeder
-    │   ├── seedItDemoData.js          ← Seeds companies (INFY, WIPRO, TCS), roles, managers, & employees
-    │   └── migrate-leave-permissions.js ← Migrates LMS permission mappings
+    │   ├── bootstrap-db.js            ← Database core permissions and mapping bootstrapper
+    │   └── seedItDemoData.js          ← Seeds companies (INFY, WIPRO, TCS), roles, managers, & employees
     ├── src/
     │   ├── database/
-    │   │   └── connection.js          ← MongoDB Mongoose connection manager
+    │   │   ├── connection.js          ← MongoDB Mongoose connection manager
+    │   │   └── bootstrap.js           ← Self-healing database permission bootstrapper
     │   ├── models/
     │   │   ├── company.model.js
     │   │   ├── user.model.js
@@ -829,19 +829,12 @@ npm install
 ### Step 2 — Configure Environment
 Create `backend/.env` with your Mongo connection string and JWT Secrets.
 
-### Step 3 — Seed Global Permissions Database (Run Once)
+### Step 3 — Seed IT Companies, Departments, Designations, Holidays & Users (Optional for testing)
 ```bash
 cd ../backend
-npm run seed
-```
-This populates the global `permissions` collection with all system permission keys. It is **idempotent** — safe to run multiple times.
-
-### Step 4 — Seed IT Companies, Departments, Designations, Holidays & Users
-```bash
 npm run seed:it
-node scripts/migrate-leave-permissions.js
 ```
-This drops the database, seeds 3 real-world companies (**INFY**, **WIPRO**, **TCS**), configures roles, assigns permissions, and generates demo accounts for testing.
+This drops the database, seeds 3 real-world companies (**INFY**, **WIPRO**, **TCS**), configures default roles, and generates demo accounts for testing. All core permissions and role mapping checks are automatically synced on startup when running the server.
 
 ### Step 5 — Start Development Servers
 ```bash

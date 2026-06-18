@@ -1,11 +1,9 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import connectDatabase from '../src/database/connection.js';
-import Permission from '../src/models/permission.model.js';
 import Company from '../src/models/company.model.js';
 import User from '../src/models/user.model.js';
 import Role from '../src/models/role.model.js';
-import RolePermission from '../src/models/role-permission.model.js';
 import Department from '../src/models/department.model.js';
 import Designation from '../src/models/designation.model.js';
 import Branch from '../src/models/branch.model.js';
@@ -15,68 +13,7 @@ import { hashPassword } from '../src/utils/auth.utils.js';
 
 dotenv.config();
 
-const permissionsToSeed = [
-  // Employee module permissions
-  { module: 'employee', action: 'create', permissionKey: 'employee.create' },
-  { module: 'employee', action: 'view',   permissionKey: 'employee.view' },
-  { module: 'employee', action: 'edit',   permissionKey: 'employee.edit' },
-  { module: 'employee', action: 'delete', permissionKey: 'employee.delete' },
-
-  // Company module permissions
-  { module: 'company',  action: 'view',   permissionKey: 'company.view' },
-  { module: 'company',  action: 'edit',   permissionKey: 'company.edit' },
-
-  // Role module permissions
-  { module: 'role',     action: 'view',   permissionKey: 'role.view' },
-  { module: 'role',     action: 'edit',   permissionKey: 'role.edit' },
-
-  // Audit logs permissions
-  { module: 'audit',    action: 'view',   permissionKey: 'audit.view' },
-
-  // Department permissions
-  { module: 'department', action: 'create', permissionKey: 'department.create' },
-  { module: 'department', action: 'view',   permissionKey: 'department.view' },
-  { module: 'department', action: 'edit',   permissionKey: 'department.edit' },
-  { module: 'department', action: 'delete', permissionKey: 'department.delete' },
-
-  // Designation permissions
-  { module: 'designation', action: 'create', permissionKey: 'designation.create' },
-  { module: 'designation', action: 'view',   permissionKey: 'designation.view' },
-  { module: 'designation', action: 'edit',   permissionKey: 'designation.edit' },
-  { module: 'designation', action: 'delete', permissionKey: 'designation.delete' },
-
-  // Branch permissions
-  { module: 'branch', action: 'create', permissionKey: 'branch.create' },
-  { module: 'branch', action: 'view',   permissionKey: 'branch.view' },
-  { module: 'branch', action: 'edit',   permissionKey: 'branch.edit' },
-  { module: 'branch', action: 'delete', permissionKey: 'branch.delete' },
-
-  // Shift permissions
-  { module: 'shift', action: 'create', permissionKey: 'shift.create' },
-  { module: 'shift', action: 'view',   permissionKey: 'shift.view' },
-  { module: 'shift', action: 'edit',   permissionKey: 'shift.edit' },
-  { module: 'shift', action: 'delete', permissionKey: 'shift.delete' },
-
-  // Employee Type permissions
-  { module: 'employeeType', action: 'create', permissionKey: 'employeeType.create' },
-  { module: 'employeeType', action: 'view',   permissionKey: 'employeeType.view' },
-  { module: 'employeeType', action: 'edit',   permissionKey: 'employeeType.edit' },
-  { module: 'employeeType', action: 'delete', permissionKey: 'employeeType.delete' },
-
-  // Work Location permissions
-  { module: 'workLocation', action: 'create', permissionKey: 'workLocation.create' },
-  { module: 'workLocation', action: 'view',   permissionKey: 'workLocation.view' },
-  { module: 'workLocation', action: 'edit',   permissionKey: 'workLocation.edit' },
-  { module: 'workLocation', action: 'delete', permissionKey: 'workLocation.delete' },
-
-  // Holiday Calendar permissions
-  { module: 'holiday', action: 'create', permissionKey: 'holiday.create' },
-  { module: 'holiday', action: 'view',   permissionKey: 'holiday.view' },
-  { module: 'holiday', action: 'edit',   permissionKey: 'holiday.edit' },
-  { module: 'holiday', action: 'delete', permissionKey: 'holiday.delete' }
-];
-
-async function seedCompany(companyDetails, adminDetails, departments, designations, branches, shifts, holidays, permissions) {
+async function seedCompany(companyDetails, adminDetails, departments, designations, branches, shifts, holidays) {
   const companyId = new mongoose.Types.ObjectId();
   const adminUserId = new mongoose.Types.ObjectId();
   const creatorId = adminUserId;
@@ -93,54 +30,21 @@ async function seedCompany(companyDetails, adminDetails, departments, designatio
     plan: 'enterprise'
   });
 
-  // 2. Create Roles with Realistic IT Company Permissions
+  // 2. Create Default Roles
   const roles = {};
-  const roleDefinitions = [
-    {
-      roleName: 'Company Admin',
-      description: 'Full administrative access to IT operations.',
-      perms: permissions.map(p => p.permissionKey) // All permissions
-    },
-    {
-      roleName: 'HR',
-      description: 'IT Talent Acquisition & Employee Management.',
-      perms: [
-        'employee.create', 'employee.view', 'employee.edit', 'employee.delete',
-        'department.view', 'designation.view', 'branch.view', 'shift.view',
-        'holiday.view', 'holiday.create', 'holiday.edit', 'holiday.delete', 'audit.view'
-      ]
-    },
-    {
-      roleName: 'Employee',
-      description: 'Software Engineer / Developer access.',
-      perms: [
-        'employee.view', 'holiday.view'
-      ]
-    }
-  ];
-
-  for (const rDef of roleDefinitions) {
+  const roleNames = ['Company Admin', 'HR', 'Manager', 'Employee'];
+  
+  for (const rName of roleNames) {
     const roleId = new mongoose.Types.ObjectId();
     const role = await Role.create({
       _id: roleId,
       companyId,
-      roleName: rDef.roleName,
-      description: rDef.description,
+      roleName: rName,
+      description: `${rName} default system role.`,
       createdBy: creatorId,
       updatedBy: creatorId
     });
-    roles[rDef.roleName] = role;
-
-    // Filter permitted docs
-    const targetPermDocs = permissions.filter(p => rDef.perms.includes(p.permissionKey));
-    const mappings = targetPermDocs.map(perm => ({
-      companyId,
-      roleId,
-      permissionId: perm._id,
-      createdBy: creatorId,
-      updatedBy: creatorId
-    }));
-    await RolePermission.insertMany(mappings);
+    roles[rName] = role;
   }
 
   // 3. Create Admin User
@@ -256,7 +160,7 @@ async function seedCompany(companyDetails, adminDetails, departments, designatio
     lastName: 'Patel',
     email: `pm@${companyDetails.domain}`,
     password: managerPasswordHash,
-    roleId: roles['Employee']._id,
+    roleId: roles['Manager']._id,
     status: 'active',
     departmentId: deptDocs.find(d => d.code === 'DEV')?._id || deptDocs[0]?._id,
     designationId: desDocs.find(d => d.title.includes('Lead') || d.title.includes('Manager'))?._id || desDocs[0]?._id,
@@ -298,10 +202,7 @@ async function seed() {
     await mongoose.connection.db.dropDatabase();
     console.log('Database dropped successfully.');
 
-    // 2. Seed Permissions
-    console.log('Seeding global system permissions...');
-    const permissions = await Permission.insertMany(permissionsToSeed);
-    console.log(`Successfully seeded ${permissions.length} permissions.`);
+
 
     // 3. Seed Super Admin
     console.log('Seeding Super Admin user...');
@@ -319,7 +220,7 @@ async function seed() {
     await superAdmin.save();
     console.log('Super Admin user created successfully.');
 
-    // 4. Seed Company 1: Infosys Limited
+    // 3. Seed Company 1: Infosys Limited
     await seedCompany(
       { name: 'Infosys Limited', code: 'INFY', email: 'contact@infosys.com', phone: '9812345670', domain: 'infosys.com' },
       { firstName: 'Salil', lastName: 'Parekh', email: 'admin@infosys.com', password: 'Admin@123' },
@@ -344,11 +245,10 @@ async function seed() {
         { name: 'New Year', date: '2026-01-01', description: 'Start of the calendar year.' },
         { name: 'Independence Day', date: '2026-08-15', description: 'National holiday.' },
         { name: 'Diwali', date: '2026-11-09', description: 'Festival of lights.' }
-      ],
-      permissions
+      ]
     );
 
-    // 5. Seed Company 2: Wipro Technologies
+    // 4. Seed Company 2: Wipro Technologies
     await seedCompany(
       { name: 'Wipro Technologies', code: 'WIPRO', email: 'contact@wipro.com', phone: '8712345670', domain: 'wipro.com' },
       { firstName: 'Thierry', lastName: 'Delaporte', email: 'admin@wipro.com', password: 'Admin@123' },
@@ -370,12 +270,11 @@ async function seed() {
       [
         { name: 'New Year', date: '2026-01-01', description: 'Global holiday.' },
         { name: 'Republic Day', date: '2026-01-26', description: 'National celebration.' },
-        { name: 'Gandhi Jayanti', date: '2026-10-02', description: 'Mahatma Gandhi birthday.' }
-      ],
-      permissions
+        { name: 'Gandhi Jayanti', date: '2026-10-02', description: 'Gandhi Birthday.' }
+      ]
     );
 
-    // 6. Seed Company 3: Tata Consultancy Services (TCS)
+    // 5. Seed Company 3: Tata Consultancy Services (TCS)
     await seedCompany(
       { name: 'TCS Limited', code: 'TCS', email: 'contact@tcs.com', phone: '7612345670', domain: 'tcs.com' },
       { firstName: 'K', lastName: 'Krithivasan', email: 'admin@tcs.com', password: 'Admin@123' },
@@ -398,8 +297,7 @@ async function seed() {
         { name: 'New Year', date: '2026-01-01', description: 'Global holiday.' },
         { name: 'Holi', date: '2026-03-03', description: 'Festival of colors.' },
         { name: 'Christmas', date: '2026-12-25', description: 'Winter holiday.' }
-      ],
-      permissions
+      ]
     );
 
     console.log('\n🚀 MULTI-COMPANY IT DEMO SEED COMPLETED SUCCESSFULLY!');

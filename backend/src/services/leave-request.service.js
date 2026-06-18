@@ -461,6 +461,16 @@ export const getLeaveRequests = async (companyId, query, actorId, actorRole) => 
   if (query.leaveTypeId) {
     filter.leaveTypeId = query.leaveTypeId;
   }
+  if (query.fromDate) {
+    const start = new Date(query.fromDate);
+    start.setUTCHours(0, 0, 0, 0);
+    filter.fromDate = { ...filter.fromDate, $gte: start };
+  }
+  if (query.toDate) {
+    const end = new Date(query.toDate);
+    end.setUTCHours(23, 59, 59, 999);
+    filter.toDate = { ...filter.toDate, $lte: end };
+  }
 
   const total = await LeaveRequest.countDocuments(filter);
   const requests = await LeaveRequest.find(filter)

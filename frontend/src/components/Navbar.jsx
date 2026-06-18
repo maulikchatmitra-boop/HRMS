@@ -26,9 +26,18 @@ const Navbar = () => {
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      // Poll every 30 seconds for live notifications
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+      // Poll every 10 seconds for live notifications
+      const interval = setInterval(fetchNotifications, 10000);
+
+      const handleRefresh = () => {
+        fetchNotifications();
+      };
+      window.addEventListener('refreshNotifications', handleRefresh);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('refreshNotifications', handleRefresh);
+      };
     }
   }, [user]);
 

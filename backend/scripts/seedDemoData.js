@@ -1,11 +1,9 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import connectDatabase from '../src/database/connection.js';
-import Permission from '../src/models/permission.model.js';
 import Company from '../src/models/company.model.js';
 import User from '../src/models/user.model.js';
 import Role from '../src/models/role.model.js';
-import RolePermission from '../src/models/role-permission.model.js';
 import Department from '../src/models/department.model.js';
 import Designation from '../src/models/designation.model.js';
 import Branch from '../src/models/branch.model.js';
@@ -14,68 +12,7 @@ import { hashPassword } from '../src/utils/auth.utils.js';
 
 dotenv.config();
 
-const permissionsToSeed = [
-  // Employee module permissions
-  { module: 'employee', action: 'create', permissionKey: 'employee.create' },
-  { module: 'employee', action: 'view',   permissionKey: 'employee.view' },
-  { module: 'employee', action: 'edit',   permissionKey: 'employee.edit' },
-  { module: 'employee', action: 'delete', permissionKey: 'employee.delete' },
-
-  // Company module permissions
-  { module: 'company',  action: 'view',   permissionKey: 'company.view' },
-  { module: 'company',  action: 'edit',   permissionKey: 'company.edit' },
-
-  // Role module permissions
-  { module: 'role',     action: 'view',   permissionKey: 'role.view' },
-  { module: 'role',     action: 'edit',   permissionKey: 'role.edit' },
-
-  // Audit logs permissions
-  { module: 'audit',    action: 'view',   permissionKey: 'audit.view' },
-
-  // Department permissions
-  { module: 'department', action: 'create', permissionKey: 'department.create' },
-  { module: 'department', action: 'view',   permissionKey: 'department.view' },
-  { module: 'department', action: 'edit',   permissionKey: 'department.edit' },
-  { module: 'department', action: 'delete', permissionKey: 'department.delete' },
-
-  // Designation permissions
-  { module: 'designation', action: 'create', permissionKey: 'designation.create' },
-  { module: 'designation', action: 'view',   permissionKey: 'designation.view' },
-  { module: 'designation', action: 'edit',   permissionKey: 'designation.edit' },
-  { module: 'designation', action: 'delete', permissionKey: 'designation.delete' },
-
-  // Branch permissions
-  { module: 'branch', action: 'create', permissionKey: 'branch.create' },
-  { module: 'branch', action: 'view',   permissionKey: 'branch.view' },
-  { module: 'branch', action: 'edit',   permissionKey: 'branch.edit' },
-  { module: 'branch', action: 'delete', permissionKey: 'branch.delete' },
-
-  // Shift permissions
-  { module: 'shift', action: 'create', permissionKey: 'shift.create' },
-  { module: 'shift', action: 'view',   permissionKey: 'shift.view' },
-  { module: 'shift', action: 'edit',   permissionKey: 'shift.edit' },
-  { module: 'shift', action: 'delete', permissionKey: 'shift.delete' },
-
-  // Employee Type permissions
-  { module: 'employeeType', action: 'create', permissionKey: 'employeeType.create' },
-  { module: 'employeeType', action: 'view',   permissionKey: 'employeeType.view' },
-  { module: 'employeeType', action: 'edit',   permissionKey: 'employeeType.edit' },
-  { module: 'employeeType', action: 'delete', permissionKey: 'employeeType.delete' },
-
-  // Work Location permissions
-  { module: 'workLocation', action: 'create', permissionKey: 'workLocation.create' },
-  { module: 'workLocation', action: 'view',   permissionKey: 'workLocation.view' },
-  { module: 'workLocation', action: 'edit',   permissionKey: 'workLocation.edit' },
-  { module: 'workLocation', action: 'delete', permissionKey: 'workLocation.delete' },
-
-  // Holiday Calendar permissions
-  { module: 'holiday', action: 'create', permissionKey: 'holiday.create' },
-  { module: 'holiday', action: 'view',   permissionKey: 'holiday.view' },
-  { module: 'holiday', action: 'edit',   permissionKey: 'holiday.edit' },
-  { module: 'holiday', action: 'delete', permissionKey: 'holiday.delete' }
-];
-
-async function seedCompany(companyDetails, adminDetails, departments, designations, branches, shifts, permissions) {
+async function seedCompany(companyDetails, adminDetails, departments, designations, branches, shifts) {
   const companyId = new mongoose.Types.ObjectId();
   const adminUserId = new mongoose.Types.ObjectId();
   const creatorId = adminUserId;
@@ -107,16 +44,6 @@ async function seedCompany(companyDetails, adminDetails, departments, designatio
       updatedBy: creatorId
     });
     roles[rName] = role;
-
-    // Map permissions to Role
-    const mappings = permissions.map(perm => ({
-      companyId,
-      roleId,
-      permissionId: perm._id,
-      createdBy: creatorId,
-      updatedBy: creatorId
-    }));
-    await RolePermission.insertMany(mappings);
   }
 
   // 3. Create Admin User
@@ -261,12 +188,7 @@ async function seed() {
     await mongoose.connection.db.dropDatabase();
     console.log('Database dropped successfully.');
 
-    // 2. Seed Permissions
-    console.log('Seeding global system permissions...');
-    const permissions = await Permission.insertMany(permissionsToSeed);
-    console.log(`Successfully seeded ${permissions.length} permissions.`);
-
-    // 3. Seed Super Admin
+    // 2. Seed Super Admin
     console.log('Seeding Super Admin user...');
     const hashedSuperAdminPassword = await hashPassword('SuperAdmin@123');
     const superAdmin = new User({
@@ -282,39 +204,37 @@ async function seed() {
     await superAdmin.save();
     console.log('Super Admin user created successfully.');
 
-    // 4. Seed Company 1: Tata Steel
+    // 3. Seed Company 1: Tata Steel
     await seedCompany(
       { name: 'Tata Steel', code: 'TATA', email: 'contact@tata.com', phone: '9871234560', domain: 'tata.com' },
       { firstName: 'Ratan', lastName: 'Tata', email: 'admin@tata.com', password: 'Admin@123' },
       [
         { name: 'Steel Production', code: 'PROD', description: 'Raw iron ore melting and sheet production.' },
-        { name: 'Logistics Operations', code: 'LOG', description: 'Supply chain management and railway shipping.' }
+        { name: 'Corporate Logistics', code: 'LOG', description: 'Internal fleet and cargo shipping.' }
       ],
       [
-        { title: 'Production Specialist', description: 'Monitors blast furnace operations.' },
-        { title: 'Logistics Supervisor', description: 'Manages bulk shipment manifests.' }
+        { title: 'Production Supervisor', description: 'Oversees daily raw steel processing.' },
+        { title: 'Logistics Coordinator', description: 'Manages freight scheduling and vendor relations.' }
       ],
       [
-        { name: 'Jamshedpur Works', address: 'Bistupur Boulevard', city: 'Jamshedpur', state: 'Jharkhand', country: 'India', zipCode: '831001' }
+        { name: 'Tata Jamshedpur Plant', address: 'Jamshedpur Works', city: 'Jamshedpur', state: 'Jharkhand', country: 'India', zipCode: '831001' }
       ],
       [
-        { name: 'Tata Day Shift', startTime: '09:00', endTime: '17:00', description: 'Standard day operations.' },
-        { name: 'Tata Night Shift', startTime: '21:00', endTime: '05:00', description: 'Blast furnace overnight monitoring.' }
-      ],
-      permissions
+        { name: 'Tata Standard Day Shift', startTime: '09:00', endTime: '17:00', description: 'Standard day operations.' }
+      ]
     );
 
-    // 5. Seed Company 2: Adani Power
+    // 4. Seed Company 2: Adani Power
     await seedCompany(
-      { name: 'Adani Power', code: 'ADANI', email: 'contact@adani.com', phone: '8765432109', domain: 'adani.com' },
+      { name: 'Adani Power', code: 'ADANI', email: 'contact@adani.com', phone: '9876543210', domain: 'adani.com' },
       { firstName: 'Gautam', lastName: 'Adani', email: 'admin@adani.com', password: 'Admin@123' },
       [
-        { name: 'Solar Grid Operations', code: 'SOLAR', description: 'Photovoltaic generation and inverter controls.' },
-        { name: 'Safety & Compliance', code: 'SAFE', description: 'Thermal plant safety regulations.' }
+        { name: 'Solar Operations', code: 'SOLAR', description: 'Photovoltaic cells operations and cleaning.' },
+        { name: 'Thermal Power', code: 'THERM', description: 'Coal furnace and turbine maintenance.' }
       ],
       [
-        { title: 'Solar Array Engineer', description: 'Oversees tracking systems and performance.' },
-        { title: 'Safety Analyst', description: 'Reviews safety drills and safety compliance.' }
+        { title: 'Grid Operations Head', description: 'Monitors direct current distribution.' },
+        { title: 'Turbine Mechanic', description: 'Inspects high pressure thermal steam arrays.' }
       ],
       [
         { name: 'Mundra Solar Park', address: 'APSEZ Mundra Port', city: 'Mundra', state: 'Gujarat', country: 'India', zipCode: '370421' }
@@ -322,11 +242,10 @@ async function seed() {
       [
         { name: 'Adani Morning Shift', startTime: '06:00', endTime: '14:00', description: 'Peak sun array checks.' },
         { name: 'Adani Evening Shift', startTime: '14:00', endTime: '22:00', description: 'Array shutdown and cleanup.' }
-      ],
-      permissions
+      ]
     );
 
-    // 6. Seed Company 3: Reliance Retail
+    // 5. Seed Company 3: Reliance Retail
     await seedCompany(
       { name: 'Reliance Retail', code: 'RELIANCE', email: 'contact@reliance.com', phone: '7654321098', domain: 'reliance.com' },
       { firstName: 'Mukesh', lastName: 'Ambani', email: 'admin@reliance.com', password: 'Admin@123' },
@@ -343,8 +262,7 @@ async function seed() {
       ],
       [
         { name: 'Reliance Retail Standard Shift', startTime: '10:00', endTime: '18:00', description: 'Standard retail hours.' }
-      ],
-      permissions
+      ]
     );
 
     console.log('\n🚀 MULTI-COMPANY DEMO SEED COMPLETED SUCCESSFULLY!');

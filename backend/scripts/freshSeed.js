@@ -6,6 +6,10 @@ import Company from '../src/models/company.model.js';
 import User from '../src/models/user.model.js';
 import Role from '../src/models/role.model.js';
 import RolePermission from '../src/models/role-permission.model.js';
+import Department from '../src/models/department.model.js';
+import Designation from '../src/models/designation.model.js';
+import Branch from '../src/models/branch.model.js';
+import Shift from '../src/models/shift.model.js';
 import { onboardCompany } from '../src/services/company.service.js';
 import { hashPassword } from '../src/utils/auth.utils.js';
 

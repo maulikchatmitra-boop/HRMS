@@ -289,7 +289,7 @@ const LeaveBalances = () => {
           title="Adjust Employee Leave Balance"
           size="md"
         >
-          <form onSubmit={handleAdjustSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleAdjustSubmit} noValidate className="flex flex-col gap-4">
             {formError && (
               <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold rounded-xl">
                 {formError}
