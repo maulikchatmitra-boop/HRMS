@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { FiChevronDown, FiUser, FiLogOut, FiBriefcase, FiBell } from 'react-icons/fi';
-import { getRoleCategory } from '../utils/user.utils';
+import { getRoleCategory, formatDateTimeDisplay } from '../utils/user.utils';
 import axiosClient from '../api/axiosClient';
 
 const Navbar = () => {
@@ -195,15 +195,7 @@ const Navbar = () => {
                           {n.message}
                         </p>
                         <p className="text-[9px] text-slate-350 font-bold mt-1.5">
-                          {new Date(n.createdAt).toLocaleString('en-IN', {
-                            timeZone: 'Asia/Kolkata',
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true,
-                          })}
+                          {formatDateTimeDisplay(n.createdAt)}
                         </p>
                       </div>
                     </div>

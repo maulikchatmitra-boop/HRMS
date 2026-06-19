@@ -46,8 +46,15 @@ import LeaveTypes from './pages/leave/LeaveTypes';
 import LeavePolicies from './pages/leave/LeavePolicies';
 import LeaveBalances from './pages/leave/LeaveBalances';
 import LeaveRequests from './pages/leave/LeaveRequests';
-import LeaveCalendar from './pages/leave/LeaveCalendar';
 import Documents from './pages/Documents';
+
+// Attendance Pages
+import AttendanceDashboard from './pages/attendance/AttendanceDashboard';
+import MyAttendance from './pages/attendance/MyAttendance';
+import AttendanceCalendar from './pages/attendance/AttendanceCalendar';
+import RegularizationRequests from './pages/attendance/RegularizationRequests';
+import AttendanceReports from './pages/attendance/AttendanceReports';
+import MonthlyAttendanceSummary from './pages/attendance/MonthlyAttendanceSummary';
 
 // Helper component to redirect root "/" to the appropriate dashboard
 const HomeRedirect = () => {
@@ -371,16 +378,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/leave/calendar"
-            element={
-              <ProtectedRoute>
-                <RoleGuard requirePermission="leaveCalendar.view">
-                  <LeaveCalendar />
-                </RoleGuard>
-              </ProtectedRoute>
-            }
-          />
 
           {/* Document Management Routes */}
           <Route
@@ -389,6 +386,58 @@ function App() {
               <ProtectedRoute>
                 <RoleGuard requirePermission="document.view">
                   <Documents />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Attendance Routes */}
+          <Route
+            path="/attendance/my-attendance"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="attendance.view">
+                  <MyAttendance />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/attendance/calendar"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="attendance.view">
+                  <AttendanceCalendar />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/attendance/regularizations"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="attendance.regularize">
+                  <RegularizationRequests />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/attendance/reports"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="attendance.view">
+                  <AttendanceReports />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/attendance/monthly-summary"
+            element={
+              <ProtectedRoute>
+                <RoleGuard requirePermission="attendance.manage">
+                  <MonthlyAttendanceSummary />
                 </RoleGuard>
               </ProtectedRoute>
             }

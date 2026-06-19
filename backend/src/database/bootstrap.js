@@ -97,7 +97,15 @@ const systemPermissions = [
   { module: 'document', action: 'upload',   permissionKey: 'document.upload' },
   { module: 'document', action: 'delete',   permissionKey: 'document.delete' },
   { module: 'document', action: 'download', permissionKey: 'document.download' },
-  { module: 'document', action: 'verify',   permissionKey: 'document.verify' }
+  { module: 'document', action: 'verify',   permissionKey: 'document.verify' },
+
+  // Attendance module permissions
+  { module: 'attendance', action: 'view',       permissionKey: 'attendance.view' },
+  { module: 'attendance', action: 'checkin',    permissionKey: 'attendance.checkin' },
+  { module: 'attendance', action: 'checkout',   permissionKey: 'attendance.checkout' },
+  { module: 'attendance', action: 'regularize', permissionKey: 'attendance.regularize' },
+  { module: 'attendance', action: 'approve',    permissionKey: 'attendance.approve' },
+  { module: 'attendance', action: 'manage',     permissionKey: 'attendance.manage' }
 ];
 
 export const autoBootstrapDatabase = async () => {
@@ -154,7 +162,12 @@ export const autoBootstrapDatabase = async () => {
             'leaveCalendar.view',
             'leaveHistory.view',
             'document.view',
-            'document.download'
+            'document.download',
+            'attendance.view',
+            'attendance.checkin',
+            'attendance.checkout',
+            'attendance.regularize',
+            'attendance.approve'
           ];
         } else {
           // Employees / Default roles get view-only base and standard own leaves
@@ -166,7 +179,11 @@ export const autoBootstrapDatabase = async () => {
             'leave.cancel',
             'leaveCalendar.view',
             'document.view',
-            'document.download'
+            'document.download',
+            'attendance.view',
+            'attendance.checkin',
+            'attendance.checkout',
+            'attendance.regularize'
           ];
         }
 

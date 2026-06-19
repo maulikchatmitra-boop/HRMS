@@ -7,7 +7,7 @@ import Modal from '../../components/Modal';
 import Input from '../../components/Input';
 import { FiPlus, FiEdit, FiTrash2, FiCalendar } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
-import { hasPermission } from '../../utils/user.utils';
+import { hasPermission, formatDateDisplay } from '../../utils/user.utils';
 
 const Holidays = () => {
   const { user } = useAuth();
@@ -152,7 +152,7 @@ const Holidays = () => {
       render: (val) => (
         <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
           <FiCalendar className="w-3.5 h-3.5 text-indigo-500" />
-          <span>{new Date(val).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
+          <span>{formatDateDisplay(val)}</span>
         </span>
       ),
     },

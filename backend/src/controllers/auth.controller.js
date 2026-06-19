@@ -213,3 +213,35 @@ export const refreshToken = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * Upload profile picture / avatar to Cloudinary
+ */
+export const uploadAvatar = async (req, res, next) => {
+  try {
+    const { userId, companyId } = req.user;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file uploaded.',
+      });
+    }
+
+    const avatarUrl = await authService.uploadAvatar(
+      userId,
+      companyId,
+      req.file.buffer,
+      req.file.originalname
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: { avatarUrl },
+      message: 'Profile picture uploaded and updated successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

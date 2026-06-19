@@ -120,6 +120,11 @@ async function seedCompany(companyDetails, adminDetails, departments, designatio
     shiftDocs.push(sh);
   }
 
+  // Assign shift to admin user
+  if (shiftDocs.length > 0) {
+    await User.findByIdAndUpdate(adminUserId, { shiftId: shiftDocs[0]._id });
+  }
+
   // 8. Create HR User
   const hrPasswordHash = await hashPassword('HRUser@123');
   const hrUser = await User.create({

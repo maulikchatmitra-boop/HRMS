@@ -2,6 +2,7 @@ import Company from '../models/company.model.js';
 import User from '../models/user.model.js';
 import RolePermission from '../models/role-permission.model.js';
 import Permission from '../models/permission.model.js';
+import { uploadBufferToCloudinary } from './cloudinary.service.js';
 import { logAction } from './auditLog.service.js';
 import { formatCleanUser, getRoleCategory } from '../utils/user.utils.js';
 import {
@@ -529,3 +530,45 @@ export const refreshSession = async (refreshToken) => {
     throw new Error('Invalid or expired refresh token.');
   }
 };
+
+/**
+ * Upload User Avatar/Profile Picture to Cloudinary
+ * @param {string} userId
+ * @param {string} companyId
+ * @param {Buffer} fileBuffer
+ * @param {string} originalName
+ * @returns {Promise<string>} Cloudinary secure URL
+ */
+export const uploadAvatar = async (userId, companyId, fileBuffer, originalName) => {
+  if (!fileBuffer) {
+    throw new Error('No file buffer provided.');
+  }
+  
+  // 1. Upload to Cloudinary under 'avatars' folder
+  const cloudRes = await uploadBufferToCloudinary(fileBuffer, 'avatars', originalName);
+  const avatarUrl = cloudRes.secure_url;
+
+  // 2. Update user's avatar field in DB
+  const query = companyId ? { _id: userId, companyId } : { _id: userId };
+  const updatedUser = await User.findOneAndUpdate(
+    query,
+    { $set: { avatar: avatarUrl, updatedBy: userId } },
+    { new: true }
+  ).select('-password');
+
+  if (!updatedUser) {
+    throw new Error('User not found.');
+  }
+
+  // 3. Log Audit Action
+  await logAction({
+    companyId: companyId || null,
+    userId,
+    module: 'user',
+    action: 'update',
+    newData: { updatedFields: ['avatar'], avatarUrl }
+  });
+
+  return avatarUrl;
+};
+

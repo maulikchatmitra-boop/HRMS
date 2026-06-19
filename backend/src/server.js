@@ -2,6 +2,8 @@ import dotenv from 'dotenv';
 import app from './app.js';
 import connectDatabase from './database/connection.js';
 import { autoBootstrapDatabase } from './database/bootstrap.js';
+import cron from 'node-cron';
+import { runDailyCronJob } from './services/attendance.service.js';
 
 // Load environment configurations
 dotenv.config();
@@ -14,6 +16,15 @@ const startServer = async () => {
 
   // 2. Automatically sync core system permissions and mappings
   await autoBootstrapDatabase();
+
+  // 2.5. Schedule daily attendance consolidation cron job at 11:59 PM
+  cron.schedule('59 23 * * *', async () => {
+    try {
+      await runDailyCronJob();
+    } catch (err) {
+      console.error('[Cron] Error running daily attendance consolidation job:', err);
+    }
+  });
 
   // 3. Start HTTP server listener
   app.listen(PORT, () => {

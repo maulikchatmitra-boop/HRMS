@@ -6,6 +6,7 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Input from '../../components/Input';
 import { FiPlus, FiCreditCard, FiGlobe, FiMail, FiPhone } from 'react-icons/fi';
+import { formatDateDisplay } from '../../utils/user.utils';
 
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
@@ -285,7 +286,7 @@ const Companies = () => {
     {
       header: 'Created At',
       key: 'createdAt',
-      render: (val) => (val ? new Date(val).toLocaleDateString() : '-'),
+      render: (val) => (val ? formatDateDisplay(val) : '-'),
     },
     {
       header: 'Actions',

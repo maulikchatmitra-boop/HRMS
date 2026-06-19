@@ -12,7 +12,9 @@
     "seed:fresh": "node scripts/freshSeed.js",
     "db:clear": "node scripts/clearDb.js",
     "seed:demo": "node scripts/seedDemoData.js",
-    "seed:it": "node scripts/seedItDemoData.js"
+    "seed:it": "node scripts/seedItDemoData.js",
+    "seed:attendance": "node scripts/seedDummyAttendance.js",
+    "clear:attendance": "node scripts/clearDummyAttendance.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

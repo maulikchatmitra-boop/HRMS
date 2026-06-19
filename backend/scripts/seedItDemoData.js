@@ -121,6 +121,11 @@ async function seedCompany(companyDetails, adminDetails, departments, designatio
     shiftDocs.push(sh);
   }
 
+  // Assign shift to admin user
+  if (shiftDocs.length > 0) {
+    await User.findByIdAndUpdate(adminUserId, { shiftId: shiftDocs[0]._id });
+  }
+
   // 8. Create Holidays
   for (const h of holidays) {
     await HolidayCalendar.create({

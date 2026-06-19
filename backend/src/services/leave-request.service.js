@@ -81,6 +81,7 @@ export const createLeaveRequest = async (companyId, data, actorId) => {
   // 2. Fetch employee with manager details and department
   const employee = await User.findOne({ _id: actorId, companyId })
     .populate('departmentId')
+    .populate('roleId')
     .lean();
 
   if (!employee) {
@@ -115,9 +116,15 @@ export const createLeaveRequest = async (companyId, data, actorId) => {
   }
 
   // 5. Check reporting manager status and map workflow
+  const applicantRoleName = employee.roleId?.roleName || '';
+  const isApplicantManager = applicantRoleName.toLowerCase().includes('manager') || 
+                              applicantRoleName.toLowerCase().includes('lead') || 
+                              applicantRoleName.toLowerCase().includes('leader');
+  const isApplicantHR = applicantRoleName.toLowerCase().includes('hr');
+
   let status = 'pending_manager';
-  if (!employee.reportingManagerId) {
-    status = 'pending_hr'; // Skip manager stage automatically
+  if (!employee.reportingManagerId || isApplicantManager || isApplicantHR) {
+    status = 'pending_hr'; // Skip manager stage automatically for Manager or HR applicants
   }
 
   const employeeName = `${employee.firstName} ${employee.lastName}`;
@@ -199,7 +206,7 @@ export const handleLeaveAction = async (companyId, id, actionData, actorId, acto
     throw error;
   }
 
-  const employee = await User.findOne({ _id: request.employeeId, companyId }).lean();
+  const employee = await User.findOne({ _id: request.employeeId, companyId }).populate('roleId').lean();
   const oldData = request.toObject();
 
   // 1. Process Cancel Action (Employee only)
@@ -276,6 +283,27 @@ export const handleLeaveAction = async (companyId, id, actionData, actorId, acto
 
     await logAction({ companyId, userId: actorId, module: 'leave_request', action: 'cancel', oldData, newData: saved.toObject() });
     return saved;
+  }
+
+  // Prevent self-approval/rejection/send_back
+  if (action !== 'cancel' && request.employeeId.toString() === actorId.toString()) {
+    const error = new Error('Forbidden: You cannot approve, reject, or send back your own leave request.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // For actions other than cancel (approve, reject, send_back)
+  const applicantRoleName = employee?.roleId?.roleName || '';
+  const isApplicantHR = applicantRoleName.toLowerCase().includes('hr');
+  
+  if (isApplicantHR) {
+    const actor = await User.findById(actorId).populate('roleId').lean();
+    const isActorAdmin = actor?.isSuperAdmin || (actor?.roleId?.roleName && actor.roleId.roleName.toLowerCase().includes('admin'));
+    if (!isActorAdmin) {
+      const error = new Error('Forbidden: Only a Company Admin can approve or reject leave requests applied by HR.');
+      error.statusCode = 403;
+      throw error;
+    }
   }
 
   // 2. Process Manager / HR approvals
@@ -421,20 +449,34 @@ export const getLeaveRequests = async (companyId, query, actorId, actorRole) => 
   if (query.type === 'my-requests') {
     filter.employeeId = actorId;
   } else if (query.type === 'approvals') {
-    // For managers: pending approvals where they are reporting manager
-    // For HR: pending approvals in the HR stage
-    const isHR = actorRole && (actorRole.toLowerCase().includes('hr') || actorRole.toLowerCase().includes('admin'));
+    const actor = await User.findById(actorId).populate('roleId').lean();
+    const isAdmin = actor?.isSuperAdmin || (actor?.roleId?.roleName && actor.roleId.roleName.toLowerCase().includes('admin'));
+    const isHR = actor?.roleId?.roleName && actor.roleId.roleName.toLowerCase().includes('hr');
     
-    if (isHR) {
-      // HR/Admin can also be a reporting manager. Fetch pending_hr requests OR pending_manager requests for their team.
+    if (isAdmin) {
+      // Admin sees all pending_hr requests and pending_manager requests for their team
       const reportingEmployees = await User.find({ companyId, reportingManagerId: actorId }).select('_id').lean();
       const employeeIds = reportingEmployees.map((e) => e._id);
       filter.$or = [
         { status: 'pending_hr' },
         { status: 'pending_manager', employeeId: { $in: employeeIds } },
       ];
+    } else if (isHR) {
+      // HR sees pending_hr requests EXCEPT those applied by other HRs, plus pending_manager requests for their team
+      const reportingEmployees = await User.find({ companyId, reportingManagerId: actorId }).select('_id').lean();
+      const employeeIds = reportingEmployees.map((e) => e._id);
+      
+      const hrRoles = await Role.find({ companyId, roleName: { $regex: /hr/i } }).select('_id').lean();
+      const hrRoleIds = hrRoles.map((r) => r._id);
+      const hrUsers = await User.find({ companyId, roleId: { $in: hrRoleIds } }).select('_id').lean();
+      const hrUserIds = hrUsers.map((u) => u._id);
+
+      filter.$or = [
+        { status: 'pending_hr', employeeId: { $nin: hrUserIds } },
+        { status: 'pending_manager', employeeId: { $in: employeeIds } },
+      ];
     } else {
-      // Find all employees reporting to this manager
+      // Managers only see pending_manager requests for their team
       const reportingEmployees = await User.find({ companyId, reportingManagerId: actorId }).select('_id').lean();
       const employeeIds = reportingEmployees.map((e) => e._id);
       filter.employeeId = { $in: employeeIds };
@@ -475,6 +517,14 @@ export const getLeaveRequests = async (companyId, query, actorId, actorRole) => 
   const total = await LeaveRequest.countDocuments(filter);
   const requests = await LeaveRequest.find(filter)
     .populate('leaveTypeId', 'name code')
+    .populate({
+      path: 'employeeId',
+      select: 'firstName lastName email roleId',
+      populate: {
+        path: 'roleId',
+        select: 'roleName'
+      }
+    })
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
@@ -496,7 +546,15 @@ export const getLeaveRequests = async (companyId, query, actorId, actorRole) => 
 export const getLeaveRequestById = async (companyId, id, actorId, actorRole) => {
   const request = await LeaveRequest.findOne({ _id: id, companyId })
     .populate('leaveTypeId', 'name code')
-    .populate('approvalHistory.actorId', 'firstName lastName email');
+    .populate('approvalHistory.actorId', 'firstName lastName email')
+    .populate({
+      path: 'employeeId',
+      select: 'firstName lastName email roleId',
+      populate: {
+        path: 'roleId',
+        select: 'roleName'
+      }
+    });
 
   if (!request) {
     const error = new Error('Leave request not found.');
@@ -505,11 +563,12 @@ export const getLeaveRequestById = async (companyId, id, actorId, actorRole) => 
   }
 
   // Security checks (IDOR)
-  const isOwn = request.employeeId.toString() === actorId.toString();
+  const employeeIdStr = request.employeeId._id ? request.employeeId._id.toString() : request.employeeId.toString();
+  const isOwn = employeeIdStr === actorId.toString();
   const isHR = actorRole && (actorRole.toLowerCase().includes('hr') || actorRole.toLowerCase().includes('admin'));
   
   let isManager = false;
-  const employee = await User.findById(request.employeeId).lean();
+  const employee = await User.findById(request.employeeId._id || request.employeeId).lean();
   if (employee && employee.reportingManagerId && employee.reportingManagerId.toString() === actorId.toString()) {
     isManager = true;
   }

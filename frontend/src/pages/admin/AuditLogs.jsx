@@ -3,6 +3,7 @@ import axiosClient, { extractErrorMessage } from '../../api/axiosClient';
 import Card from '../../components/Card';
 import Table from '../../components/Table';
 import Spinner from '../../components/Spinner';
+import { formatDateTimeDisplay } from '../../utils/user.utils';
 
 const AuditLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -52,7 +53,7 @@ const AuditLogs = () => {
     {
       header: 'Timestamp',
       key: 'createdAt',
-      render: (val) => (val ? new Date(val).toLocaleString() : '-'),
+      render: (val) => (val ? formatDateTimeDisplay(val) : '-'),
     },
   ];
 

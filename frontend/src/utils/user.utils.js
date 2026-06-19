@@ -37,3 +37,29 @@ export const formatTime12h = (timeStr) => {
   const hourString = hour < 10 ? '0' + hour : hour;
   return `${hourString}:${minute} ${ampm}`;
 };
+
+export const formatDateDisplay = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const dateObj = new Date(dateStr);
+    if (isNaN(dateObj.getTime())) return dateStr;
+    // Formats as DD/MM/YYYY, then replaces / with - to yield DD-MM-YYYY
+    return dateObj.toLocaleDateString('en-GB').replace(/\//g, '-');
+  } catch (e) {
+    return dateStr;
+  }
+};
+
+export const formatDateTimeDisplay = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const dateObj = new Date(dateStr);
+    if (isNaN(dateObj.getTime())) return dateStr;
+    const datePart = dateObj.toLocaleDateString('en-GB').replace(/\//g, '-');
+    const timePart = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${datePart} ${timePart}`;
+  } catch (e) {
+    return dateStr;
+  }
+};
+

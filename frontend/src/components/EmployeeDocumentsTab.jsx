@@ -4,7 +4,7 @@ import Button from './Button';
 import Modal from './Modal';
 import Spinner from './Spinner';
 import { useAuth } from '../context/AuthContext';
-import { hasPermission } from '../utils/user.utils';
+import { hasPermission, formatDateDisplay } from '../utils/user.utils';
 import { DOCUMENT_CATEGORIES, DOCUMENT_TYPES, CATEGORY_DOCUMENT_TYPES } from '../constants/document.constants';
 import {
   FiFileText,
@@ -320,7 +320,7 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                       {doc.expiryDate && (
                         <p className="text-[9px] text-rose-500 font-bold mt-1.5 flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-                          <span>Expires: {new Date(doc.expiryDate).toLocaleDateString()}</span>
+                          <span>Expires: {formatDateDisplay(doc.expiryDate)}</span>
                         </p>
                       )}
 
@@ -372,7 +372,7 @@ const EmployeeDocumentsTab = ({ employeeId, tab, mode = 'view', onAction, refres
                           {doc.uploadedBy ? `${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}` : 'System'}
                         </p>
                         <p className="text-[9px] text-slate-405 mt-0.5 leading-none">
-                          on {new Date(doc.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          on {formatDateDisplay(doc.createdAt)}
                         </p>
                       </div>
                     </div>

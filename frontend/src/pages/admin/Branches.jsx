@@ -8,7 +8,7 @@ import Input from '../../components/Input';
 import { FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi';
 
 import { useAuth } from '../../context/AuthContext';
-import { hasPermission } from '../../utils/user.utils';
+import { hasPermission, formatDateDisplay } from '../../utils/user.utils';
 
 const Branches = () => {
   const { user } = useAuth();
@@ -92,7 +92,7 @@ const Branches = () => {
     {
       header: 'Created At',
       key: 'createdAt',
-      render: (val) => (val ? new Date(val).toLocaleDateString() : '-'),
+      render: (val) => (val ? formatDateDisplay(val) : '-'),
     },
     {
       header: 'Actions',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getRoleCategory, hasPermission } from '../utils/user.utils';
+import { getRoleCategory, hasPermission, getRoleDashboard } from '../utils/user.utils';
 import {
   FiGrid,
   FiBriefcase,
@@ -115,6 +115,22 @@ const Sidebar = () => {
     return links;
   };
 
+  const getAttendanceLinks = () => {
+    const links = [];
+    if (hasPermission(user, 'attendance.view')) {
+      links.push({ path: '/attendance/my-attendance', label: 'My Attendance', icon: FiUser });
+      links.push({ path: '/attendance/calendar', label: 'Attendance & Leave Calendar', icon: FiCalendar });
+    }
+    if (hasPermission(user, 'attendance.regularize') || hasPermission(user, 'attendance.approve')) {
+      links.push({ path: '/attendance/regularizations', label: 'Regularization Requests', icon: FiFileText });
+    }
+    if (hasPermission(user, 'attendance.manage')) {
+      links.push({ path: '/attendance/reports', label: 'Attendance Reports', icon: FiList });
+      links.push({ path: '/attendance/monthly-summary', label: 'Monthly Summary', icon: FiGrid });
+    }
+    return links;
+  };
+
   const getLeaveLinks = () => {
     const links = [];
     if (hasPermission(user, 'leaveType.view')) {
@@ -129,14 +145,12 @@ const Sidebar = () => {
     if (hasPermission(user, 'leave.viewOwn')) {
       links.push({ path: '/leave/requests', label: 'Leave Requests', icon: FiList });
     }
-    if (hasPermission(user, 'leaveCalendar.view')) {
-      links.push({ path: '/leave/calendar', label: 'Leave Calendar', icon: FiCalendar });
-    }
     return links;
   };
 
   const location = useLocation();
   const [leaveMenuOpen, setLeaveMenuOpen] = useState(location.pathname.startsWith('/leave'));
+  const [attendanceMenuOpen, setAttendanceMenuOpen] = useState(location.pathname.startsWith('/attendance'));
   const [branchShiftMenuOpen, setBranchShiftMenuOpen] = useState(
     location.pathname.startsWith('/admin/branches') || location.pathname.startsWith('/admin/shifts')
   );
@@ -147,6 +161,12 @@ const Sidebar = () => {
   useEffect(() => {
     if (location.pathname.startsWith('/leave')) {
       setLeaveMenuOpen(true);
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/attendance')) {
+      setAttendanceMenuOpen(true);
     }
   }, [location.pathname]);
 
@@ -165,7 +185,10 @@ const Sidebar = () => {
   return (
     <aside className="w-64 bg-white border-r border-slate-100 flex flex-col h-screen fixed left-0 top-0 z-20">
       {/* Brand logo */}
-      <div className="h-16 px-6 border-b border-slate-100 flex items-center gap-3">
+      <Link
+        to={getRoleDashboard(user)}
+        className="h-16 px-6 border-b border-slate-100 flex items-center gap-3 hover:bg-slate-50/50 transition-colors duration-150"
+      >
         <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md shadow-indigo-150">
           H
         </div>
@@ -173,7 +196,7 @@ const Sidebar = () => {
           <h1 className="text-sm font-black text-slate-800 tracking-tight uppercase">HRMS System</h1>
           <p className="text-[10px] text-indigo-600 font-bold tracking-wider uppercase">Enterprise</p>
         </div>
-      </div>
+      </Link>
 
       {/* Nav links */}
       <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
@@ -291,6 +314,45 @@ const Sidebar = () => {
             {leaveMenuOpen && (
               <div className="pl-4 mt-1 space-y-1 border-l border-slate-100 ml-6">
                 {getLeaveLinks().map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <NavLink
+                      key={link.path}
+                      to={link.path}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                          isActive
+                            ? 'bg-indigo-50 text-indigo-600 shadow-xs font-bold'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                        }`
+                      }
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{link.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {getAttendanceLinks().length > 0 && (
+          <div className="pt-2">
+            <button
+              onClick={() => setAttendanceMenuOpen(!attendanceMenuOpen)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <FiClock className="w-4 h-4 text-slate-500" />
+                <span>Attendance</span>
+              </div>
+              {attendanceMenuOpen ? <FiChevronUp className="w-4 h-4 text-slate-400" /> : <FiChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+
+            {attendanceMenuOpen && (
+              <div className="pl-4 mt-1 space-y-1 border-l border-slate-100 ml-6">
+                {getAttendanceLinks().map((link) => {
                   const Icon = link.icon;
                   return (
                     <NavLink

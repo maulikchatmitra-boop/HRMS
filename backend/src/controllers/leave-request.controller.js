@@ -1,5 +1,6 @@
 import * as leaveRequestService from '../services/leave-request.service.js';
 import { formatCleanMeta } from '../utils/user.utils.js';
+import { uploadBufferToCloudinary } from '../services/cloudinary.service.js';
 
 export const createLeaveRequest = async (req, res, next) => {
   try {
@@ -54,6 +55,30 @@ export const handleLeaveAction = async (req, res, next) => {
       success: true,
       data: formatCleanMeta(data),
       message: `Leave request status updated successfully.`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadAttachment = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded.',
+      });
+    }
+
+    const cloudRes = await uploadBufferToCloudinary(req.file.buffer, 'leaves', req.file.originalname);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        url: cloudRes.secure_url,
+        fileName: req.file.originalname,
+      },
+      message: 'Attachment uploaded successfully.',
     });
   } catch (error) {
     next(error);

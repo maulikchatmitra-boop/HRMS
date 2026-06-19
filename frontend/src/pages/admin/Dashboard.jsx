@@ -5,6 +5,7 @@ import Card from '../../components/Card';
 import Spinner from '../../components/Spinner';
 import { FiUsers, FiFolder, FiMapPin, FiCalendar, FiClock } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
+import { formatDateDisplay } from '../../utils/user.utils';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -169,7 +170,7 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                     <span className="text-xs font-bold text-slate-600 bg-white border border-slate-100 px-2.5 py-1 rounded-xl shadow-sm">
-                      {new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })}
+                      {`${new Date(h.date).toLocaleDateString(undefined, { weekday: 'short' })}, ${formatDateDisplay(h.date)}`}
                     </span>
                   </div>
                 ))}

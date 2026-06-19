@@ -6,7 +6,7 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Input from '../../components/Input';
 import { FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi';
-import { formatTime12h } from '../../utils/user.utils';
+import { formatTime12h, formatDateDisplay } from '../../utils/user.utils';
 
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/user.utils';
@@ -109,7 +109,7 @@ const Shifts = () => {
     {
       header: 'Created At',
       key: 'createdAt',
-      render: (val) => (val ? new Date(val).toLocaleDateString() : '-'),
+      render: (val) => (val ? formatDateDisplay(val) : '-'),
     },
     {
       header: 'Actions',

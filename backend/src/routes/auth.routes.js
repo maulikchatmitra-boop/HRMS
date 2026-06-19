@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as authController from '../controllers/auth.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
+import upload from '../middlewares/upload.middleware.js';
 import {
   loginSchema,
   forgotPasswordSchema,
@@ -25,5 +26,6 @@ router.get('/me',               authenticate,                                   
 
 // Self profile update — Har user apni profile update kar sakta hai
 router.put('/profile',          authenticate, validate(updateProfileSchema),    authController.updateProfile);
+router.post('/avatar',          authenticate, upload.single('avatar'),          authController.uploadAvatar);
 
 export default router;

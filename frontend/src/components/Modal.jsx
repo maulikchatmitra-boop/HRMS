@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { IoClose } from 'react-icons/io5';
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+const Modal = ({ isOpen = true, onClose, title, children, size = 'md' }) => {
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') onClose();

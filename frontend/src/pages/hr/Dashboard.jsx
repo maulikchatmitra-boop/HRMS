@@ -4,6 +4,7 @@ import axiosClient from '../../api/axiosClient';
 import Card from '../../components/Card';
 import Spinner from '../../components/Spinner';
 import { FiUsers, FiFolder, FiCalendar, FiBriefcase } from 'react-icons/fi';
+import { formatDateDisplay } from '../../utils/user.utils';
 
 const HRDashboard = () => {
   const [counts, setCounts] = useState({ employees: 0, departments: 0, holidays: 0 });
@@ -127,7 +128,7 @@ const HRDashboard = () => {
                       </div>
                     </div>
                     <span className="text-xs font-bold text-slate-600 bg-white border border-slate-100 px-2.5 py-1 rounded-xl shadow-sm">
-                      {new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })}
+                      {`${new Date(h.date).toLocaleDateString(undefined, { weekday: 'short' })}, ${formatDateDisplay(h.date)}`}
                     </span>
                   </div>
                 ))}

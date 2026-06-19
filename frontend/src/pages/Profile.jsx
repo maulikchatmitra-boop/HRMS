@@ -4,12 +4,13 @@ import axiosClient, { extractErrorMessage } from '../api/axiosClient';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import { FiUser, FiLock, FiCalendar, FiMapPin, FiClock, FiCheck } from 'react-icons/fi';
-import { formatTime12h } from '../utils/user.utils';
+import { FiUser, FiLock, FiCalendar, FiMapPin, FiClock, FiCheck, FiCamera, FiLoader } from 'react-icons/fi';
+import { formatTime12h, formatDateTimeDisplay } from '../utils/user.utils';
 
 const Profile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, setUser, updateProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('details');
+  const [uploading, setUploading] = useState(false);
 
   // Profile Edit State
   const [firstName, setFirstName] = useState(user?.firstName || '');
@@ -93,14 +94,50 @@ const Profile = () => {
       errors.address = 'Address cannot exceed 250 characters.';
     }
 
-    if (trimmedAvatar) {
-      if (!/^https?:\/\/\S+\.\S+/.test(trimmedAvatar)) {
-        errors.avatar = 'Please enter a valid image URL starting with http:// or https://.';
-      }
-    }
-
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setProfileError('Please upload an image file (PNG, JPG, etc.).');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileError('File size is too large. Max limit is 5MB.');
+      return;
+    }
+
+    setUploading(true);
+    setProfileSuccess('');
+    setProfileError('');
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+      const res = await axiosClient.post('/auth/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const newAvatarUrl = res.data.data.avatarUrl;
+      setAvatar(newAvatarUrl);
+      setUser((prev) => ({
+        ...prev,
+        avatar: newAvatarUrl,
+      }));
+      setProfileSuccess('Profile picture uploaded successfully.');
+    } catch (err) {
+      setProfileError(extractErrorMessage(err));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const validatePasswordForm = () => {
@@ -215,21 +252,60 @@ const Profile = () => {
     <div className="flex flex-col gap-8">
       {/* Profile Header Card */}
       <div className="bg-white rounded-3xl border border-slate-100 card-shadow-lg p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6">
-        {user?.avatar ? (
-          <img
-            src={user.avatar}
-            alt={`${user.firstName} ${user.lastName}`}
-            className="w-24 h-24 rounded-2xl object-cover ring-4 ring-indigo-50"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = `https://ui-avatars.com/api/?name=${user.firstName}+${user.lastName}&background=4f46e5&color=fff`;
-            }}
-          />
-        ) : (
-          <div className="w-24 h-24 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-3xl ring-4 ring-indigo-50">
-            {getInitials()}
+        <div className="relative w-24 h-24 flex-shrink-0">
+          <div className="relative group w-24 h-24 rounded-2xl overflow-hidden">
+            {/* Avatar Image */}
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={`${user.firstName} ${user.lastName}`}
+                className="w-24 h-24 rounded-2xl object-cover ring-4 ring-indigo-50 transition-all duration-300 group-hover:brightness-75"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = `https://ui-avatars.com/api/?name=${user.firstName}+${user.lastName}&background=4f46e5&color=fff`;
+                }}
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-3xl ring-4 ring-indigo-50 transition-all duration-300 group-hover:brightness-75">
+                {getInitials()}
+              </div>
+            )}
+
+            {/* Upload Button Overlay */}
+            <label
+              htmlFor="avatar-upload"
+              className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer animate-fade-in"
+            >
+              {uploading ? (
+                <FiLoader className="w-6 h-6 animate-spin" />
+              ) : (
+                <FiCamera className="w-6 h-6" />
+              )}
+            </label>
           </div>
-        )}
+
+          {/* Corner Camera Button (Always Visible) */}
+          <label
+            htmlFor="avatar-upload"
+            className="absolute bottom-0 right-0 translate-x-1 translate-y-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-1.5 shadow-md border-2 border-white cursor-pointer transition-colors duration-300 flex items-center justify-center w-8 h-8 z-10"
+            title="Upload Profile Picture"
+          >
+            {uploading ? (
+              <FiLoader className="w-4 h-4 animate-spin" />
+            ) : (
+              <FiCamera className="w-4 h-4" />
+            )}
+          </label>
+          
+          <input
+            id="avatar-upload"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+            disabled={uploading}
+          />
+        </div>
 
         <div className="flex-1 text-center sm:text-left">
           <h2 className="text-2xl font-black text-slate-800 tracking-tight">
@@ -341,14 +417,6 @@ const Profile = () => {
                   error={fieldErrors.city}
                 />
                 <Input
-                  label="Avatar Image URL"
-                  name="avatar"
-                  value={avatar}
-                  onChange={(e) => setAvatar(e.target.value)}
-                  placeholder="https://example.com/image.png"
-                  error={fieldErrors.avatar}
-                />
-                <Input
                   label="Address"
                   name="address"
                   type="textarea"
@@ -414,7 +482,7 @@ const Profile = () => {
                     Last Login
                   </span>
                   <span className="text-sm font-semibold text-slate-700 block mt-0.5">
-                    {user?.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'First Session'}
+                    {user?.lastLogin ? formatDateTimeDisplay(user.lastLogin) : 'First Session'}
                   </span>
                 </div>
               </div>

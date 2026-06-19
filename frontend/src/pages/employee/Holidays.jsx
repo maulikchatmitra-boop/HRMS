@@ -4,6 +4,7 @@ import Card from '../../components/Card';
 import Table from '../../components/Table';
 import Input from '../../components/Input';
 import { FiCalendar } from 'react-icons/fi';
+import { formatDateDisplay } from '../../utils/user.utils';
 
 const EmployeeHolidays = () => {
   const currentYear = new Date().getFullYear().toString();
@@ -39,7 +40,7 @@ const EmployeeHolidays = () => {
       render: (val) => (
         <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
           <FiCalendar className="w-3.5 h-3.5 text-indigo-500" />
-          <span>{new Date(val).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
+          <span>{formatDateDisplay(val)}</span>
         </span>
       ),
     },

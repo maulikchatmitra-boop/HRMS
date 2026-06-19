@@ -9,6 +9,7 @@ import * as notificationController from '../controllers/leave-notification.contr
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/rbac.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
+import upload from '../middlewares/upload.middleware.js';
 
 import { createLeaveTypeSchema, updateLeaveTypeSchema } from '../validators/leave-type.validator.js';
 import { createLeavePolicySchema, updateLeavePolicySchema, assignLeavePolicySchema } from '../validators/leave-policy.validator.js';
@@ -98,6 +99,12 @@ router.put(
 );
 
 // ─── Leave Requests ───────────────────────────────────────────────
+router.post(
+  '/upload',
+  authorize('leave.apply'),
+  upload.single('file'),
+  requestController.uploadAttachment
+);
 router.post(
   '/requests',
   authorize('leave.apply'),

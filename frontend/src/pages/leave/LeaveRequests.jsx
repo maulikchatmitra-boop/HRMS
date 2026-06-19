@@ -17,9 +17,12 @@ import {
   FiSearch,
   FiInfo,
   FiSliders,
+  FiPaperclip,
+  FiTrash2,
+  FiLoader,
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
-import { hasPermission, getRoleCategory } from '../../utils/user.utils';
+import { hasPermission, getRoleCategory, formatDateDisplay, formatDateTimeDisplay } from '../../utils/user.utils';
 
 const LeaveRequests = () => {
   const { user } = useAuth();
@@ -56,6 +59,8 @@ const LeaveRequests = () => {
   const [isHalfDay, setIsHalfDay] = useState(false);
   const [reason, setReason] = useState('');
   const [attachment, setAttachment] = useState('');
+  const [attachmentFileName, setAttachmentFileName] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [applyBtnLoading, setApplyBtnLoading] = useState(false);
   const [applyError, setApplyError] = useState('');
   const [applyFieldErrors, setApplyFieldErrors] = useState({});
@@ -70,6 +75,12 @@ const LeaveRequests = () => {
 
   const canApprove = hasPermission(user, 'leave.approve') || getRoleCategory(user.role?.roleName) === 'Manager';
   const canApply = hasPermission(user, 'leave.apply');
+
+  const applicantRoleName = selectedRequest?.employeeId?.roleId?.roleName || '';
+  const isApplicantHR = applicantRoleName.toLowerCase().includes('hr');
+  const isUserAdmin = getRoleCategory(user?.role?.roleName) === 'Company Admin';
+  const isOwnRequest = selectedRequest && (selectedRequest.employeeId?._id || selectedRequest.employeeId) === user?._id;
+  const showActionButtons = isOwnRequest ? false : (isApplicantHR ? isUserAdmin : canApprove);
 
   const fetchLeaveRequests = async (isSilent = false) => {
     if (!isSilent) {
@@ -315,6 +326,42 @@ const LeaveRequests = () => {
     }
   };
 
+  const handleAttachmentUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setApplyError('Attachment file size must be less than 10MB.');
+      return;
+    }
+
+    setUploading(true);
+    setApplyError('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await axiosClient.post('/leave/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setAttachment(res.data.data.url);
+      setAttachmentFileName(file.name);
+    } catch (err) {
+      setApplyError(extractErrorMessage(err));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveAttachment = () => {
+    setAttachment('');
+    setAttachmentFileName('');
+  };
+
   const resetApplyForm = () => {
     setSelectedLeaveTypeId('');
     setFromDate('');
@@ -322,6 +369,7 @@ const LeaveRequests = () => {
     setIsHalfDay(false);
     setReason('');
     setAttachment('');
+    setAttachmentFileName('');
     setApplyError('');
     setApplyFieldErrors({});
   };
@@ -387,7 +435,7 @@ const LeaveRequests = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, requestObj = null) => {
     const styles = {
       pending_manager: 'bg-amber-50 text-amber-700 border border-amber-100',
       pending_hr: 'bg-indigo-50 text-indigo-700 border border-indigo-100',
@@ -396,9 +444,13 @@ const LeaveRequests = () => {
       sent_back: 'bg-slate-100 text-slate-700 border border-slate-200',
       cancelled: 'bg-slate-50 text-slate-400 border border-slate-150',
     };
+
+    const applicantRoleName = requestObj?.employeeId?.roleId?.roleName || '';
+    const isApplicantHR = applicantRoleName.toLowerCase().includes('hr');
+
     const labels = {
       pending_manager: 'Pending Manager',
-      pending_hr: 'Pending HR',
+      pending_hr: isApplicantHR ? 'Pending Admin' : 'Pending HR',
       approved: 'Approved',
       rejected: 'Rejected',
       sent_back: 'Sent Back',
@@ -406,7 +458,7 @@ const LeaveRequests = () => {
     };
     return (
       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black tracking-wide ${styles[status]}`}>
-        {labels[status]}
+        {labels[status] || status}
       </span>
     );
   };
@@ -416,7 +468,7 @@ const LeaveRequests = () => {
       header: 'Employee',
       key: 'employeeName',
       render: (val, item) => {
-        const isOwn = item.employeeId === user._id;
+        const isOwn = (item.employeeId?._id || item.employeeId) === user._id;
         return (
           <div>
             {val && !isOwn && <p className="font-bold text-slate-800 text-sm">{val}</p>}
@@ -443,7 +495,7 @@ const LeaveRequests = () => {
         <div>
           <p className="font-black text-slate-800 text-xs">{val} Day(s)</p>
           <p className="text-[10px] text-slate-400 font-bold mt-0.5">
-            {new Date(item.fromDate).toLocaleDateString()} - {new Date(item.toDate).toLocaleDateString()}
+            {formatDateDisplay(item.fromDate)} - {formatDateDisplay(item.toDate)}
           </p>
         </div>
       ),
@@ -456,13 +508,13 @@ const LeaveRequests = () => {
     {
       header: 'Status',
       key: 'status',
-      render: (val) => getStatusBadge(val),
+      render: (val, item) => getStatusBadge(val, item),
     },
     {
       header: 'Actions',
       key: '_id',
       render: (_, item) => {
-        const isOwn = item.employeeId === user._id;
+        const isOwn = (item.employeeId?._id || item.employeeId) === user._id;
         const isPending = ['pending_manager', 'pending_hr', 'sent_back'].includes(item.status);
 
         return (
@@ -705,19 +757,71 @@ const LeaveRequests = () => {
               error={applyFieldErrors.reason}
             />
 
-            <Input
-              label="Attachment Link"
-              name="attachment"
-              value={attachment}
-              onChange={(e) => setAttachment(e.target.value)}
-              placeholder="URL to medical certificate or document (optional)..."
-            />
+            {/* Attachment File Upload */}
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                Supporting Attachment (Optional)
+              </span>
+              
+              {!attachment ? (
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors duration-300">
+                  <div className="flex flex-col items-center gap-1.5 text-slate-400">
+                    {uploading ? (
+                      <FiLoader className="w-8 h-8 text-indigo-600 animate-spin" />
+                    ) : (
+                      <FiPaperclip className="w-8 h-8 text-indigo-600" />
+                    )}
+                    <span className="text-xs font-bold text-slate-600 mt-1">
+                      {uploading ? "Uploading attachment..." : "Click to select a document"}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      PDF, Images, DOCX (Max 10MB)
+                    </span>
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleAttachmentUpload}
+                    disabled={uploading}
+                  />
+                </label>
+              ) : (
+                <div className="flex items-center justify-between p-3.5 bg-indigo-50/40 border border-indigo-100 rounded-xl">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
+                      <FiFileText className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-700 truncate">
+                        {attachmentFileName || "Uploaded Attachment"}
+                      </p>
+                      <a
+                        href={attachment}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-indigo-600 font-bold hover:underline"
+                      >
+                        View Attachment
+                      </a>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveAttachment}
+                    className="p-2 text-slate-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50"
+                    title="Remove Attachment"
+                  >
+                    <FiTrash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className="flex justify-end gap-3 mt-4 border-t border-slate-100 pt-4">
               <Button variant="secondary" onClick={() => setApplyModalOpen(false)} disabled={applyBtnLoading}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" loading={applyBtnLoading}>
+              <Button type="submit" variant="primary" loading={applyBtnLoading} disabled={uploading}>
                 Submit Application
               </Button>
             </div>
@@ -747,7 +851,7 @@ const LeaveRequests = () => {
                 </div>
               </div>
 
-              <div>{getStatusBadge(selectedRequest.status)}</div>
+              <div>{getStatusBadge(selectedRequest.status, selectedRequest)}</div>
             </div>
 
             {/* Leave Details Grid */}
@@ -761,7 +865,7 @@ const LeaveRequests = () => {
               <div>
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Dates</span>
                 <p className="font-bold text-slate-800 text-xs mt-1">
-                  {new Date(selectedRequest.fromDate).toLocaleDateString()} - {new Date(selectedRequest.toDate).toLocaleDateString()}
+                  {formatDateDisplay(selectedRequest.fromDate)} - {formatDateDisplay(selectedRequest.toDate)}
                 </p>
               </div>
               <div>
@@ -834,7 +938,7 @@ const LeaveRequests = () => {
                         <span>
                           {hist.actorId ? `${hist.actorId.firstName} ${hist.actorId.lastName}` : 'System'} ({actLabels[hist.action]})
                         </span>
-                        <span>{new Date(hist.createdAt).toLocaleString()}</span>
+                        <span>{formatDateTimeDisplay(hist.createdAt)}</span>
                       </div>
                       {hist.remarks && (
                         <p className="text-slate-500 text-xs font-semibold leading-relaxed pl-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded-lg">
@@ -848,7 +952,7 @@ const LeaveRequests = () => {
             </div>
 
             {/* Manager / HR Action Controls */}
-            {canApprove && ['pending_manager', 'pending_hr'].includes(selectedRequest.status) && (
+            {showActionButtons && ['pending_manager', 'pending_hr'].includes(selectedRequest.status) && (
               <div className="flex flex-wrap gap-2 justify-end border-t border-slate-100 pt-4 mt-2">
                 <Button
                   variant="secondary"

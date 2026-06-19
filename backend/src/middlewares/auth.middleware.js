@@ -43,7 +43,7 @@ export const authenticate = async (req, res, next) => {
 
     // ─── Company User ──────────────────────────────────────────
     const [user, company] = await Promise.all([
-      User.findOne({ _id: decoded.userId, companyId: decoded.companyId }).lean(),
+      User.findOne({ _id: decoded.userId, companyId: decoded.companyId }).populate('roleId').lean(),
       Company.findById(decoded.companyId).lean(),
     ]);
 
@@ -87,12 +87,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     // Attach roleName for role-based filtering
-    let roleName = null;
-    if (decoded.roleId) {
-      const Role = (await import('../models/role.model.js')).default;
-      const role = await Role.findById(decoded.roleId).select('roleName').lean();
-      if (role) roleName = role.roleName;
-    }
+    const roleName = user.roleId?.roleName || null;
 
     req.user = { ...decoded, roleName };
     next();
