@@ -112,7 +112,7 @@ MongoDB (Single DB)
 | Attendance Management | `/api/v1/attendance` | Log check-in/out times, calculate late arrival/early exit, manage regularization overrides, and generate monthly summaries |
 
 ---
-
+ 
 ## Database Design
 
 ### Collection: `companies`
