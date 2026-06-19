@@ -109,6 +109,7 @@ MongoDB (Single DB)
 | Audit Logs | `/api/v1/audit-logs` | Immutable activity trail tracking oldData vs newData |
 | Leave Management | `/api/v1/leave` | LMS: types, policies, balances, requests pipeline, calendar |
 | Document Management | `/api/v1/documents` & `/api/v1/employees/:id/documents` | Employee Document Hub: upload, view, verify, acknowledge, and secure download |
+| Attendance Management | `/api/v1/attendance` | Log check-in/out times, calculate late arrival/early exit, manage regularization overrides, and generate monthly summaries |
 
 ---
 
@@ -404,6 +405,45 @@ Stores employee-uploaded files and company policies managed by HR/Admins with te
 | `isCompanyPolicy` | Boolean | ✅ | Policy visibility flag (default: false) |
 
 **Indexes:** `{ companyId: 1, employeeId: 1, documentType: 1 }`
+
+---
+
+### Collection: `attendance_records`
+Tracks daily attendance logs, work timings calculations, and regularization requests.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies |
+| `employeeId` | ObjectId | ✅ | Ref → users |
+| `attendanceDate` | String | ✅ | Format: `YYYY-MM-DD` |
+| `checkInTime` | Date | ❌ | First check-in punch timestamp |
+| `checkOutTime` | Date | ❌ | Last check-out punch timestamp |
+| `expectedCheckoutTime` | Date | ❌ | Configured shift checkout target |
+| `workingMinutes` | Number | ✅ | Net active working minutes |
+| `lateMinutes` | Number | ✅ | Minutes arrived after shift start grace |
+| `earlyExitMinutes` | Number | ✅ | Minutes exited before shift end target |
+| `status` | String | ✅ | `checked_in` / `present` / `half_day` / `absent` / `missed_punch` / `pending_regularization` |
+| `regularizationReason` | String | ❌ | Revision request reason |
+| `regularizationStatus` | String | ❌ | `pending` / `approved` / `rejected` |
+| `approvedBy` | ObjectId | ❌ | Ref → users |
+| `approvalRemarks` | String | ❌ | Approval/rejection feedback |
+
+**Indexes:** `{ companyId: 1, employeeId: 1, attendanceDate: 1 }`
+
+---
+
+### Collection: `attendance_settings`
+Company-wide global rules defining full-day, half-day, and shift break thresholds.
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | ✅ | Ref → companies (unique) |
+| `fullDayMinutes` | Number | ✅ | Target minutes for full-day credit (default: 480) |
+| `halfDayMinutes` | Number | ✅ | Target minutes for half-day credit (default: 240) |
+| `fixedBreakMinutes` | Number | ✅ | Standard break deduction (default: 60) |
+| `earlyCheckoutTolerance` | Number | ✅ | Permissible early exit grace period (default: 15) |
+
+**Indexes:** `{ companyId: 1 }` (unique)
 
 ---
 
@@ -977,3 +1017,23 @@ All API responses follow this consistent structure:
 | HTTP Security Headers | `helmet` middleware sets HSTS, CSP, and disables `X-Powered-By` |
 | Error Disclosure | Stack traces only exposed in `NODE_ENV=development` |
 | Duplicate Key Errors | Mongo `code 11000` errors are caught and returned as user-friendly `400` responses |
+
+---
+
+## Technical Updates (June 19, 2026)
+
+### 1. Date Format Standardization
+- **Unified Formatting Utilities**: Integrated `formatDateDisplay` (for formatting dates as `DD-MM-YYYY`) and `formatDateTimeDisplay` (for formatting date-time values as `DD-MM-YYYY hh:mm AM/PM`) into [user.utils.js](file:///d:/HRMS_Collab/frontend/src/utils/user.utils.js).
+- **Global Integration**: Replaced raw, browser-locale-dependent `.toLocaleDateString()` and `.toLocaleString()` calls across the entire frontend (Leave requests, employee profile, document tracking, dashboard widgets, shift management, audit trails, and the main navbar clock).
+
+### 2. HR & Manager Leave Workflows and Action Guards
+- **Manager Leave Workflow Bypass**: Modified the backend leave application workflow so that leave requests from **Managers** or **HRs** skip the reporting manager stage and start directly with `pending_hr` status.
+- **Strict Self-Action Guard**: Added a backend security check that prevents any user from approving, rejecting, or revision-requesting (sending back) their own leave request.
+- **HR Approval Restrictions**: Enforced a rule where only **Company Admins** or **Super Admins** can approve, reject, or revision-request leave requests applied by HR staff.
+- **Approvals List Visibility**: Filtered the approvals list so that HR users do not see leave requests from other HR users in their queue, and standard managers only see requests from their direct reporting line.
+- **Ownership (IDOR) populated checks**: Fixed a populated-object ID comparison bug where comparing `request.employeeId` directly failed after population; it now correctly extracts `request.employeeId._id`.
+- **Dynamic 'Pending Admin' UI Label**: Mapped `pending_hr` status dynamically to display as **"Pending Admin"** on the frontend if the request applicant holds an HR role, while maintaining standard Mongoose validation enums on the backend.
+
+### 3. Clickable Logo Navigation
+- **Home Dashboard Link**: Wrapped the sidebar company branding header ("H" icon, "HRMS System" text, and "Enterprise" text) in a React Router `<Link>` tag that dynamically routes the user to their role-specific landing dashboard.
+
