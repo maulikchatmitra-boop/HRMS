@@ -115,7 +115,7 @@ MongoDB (Single DB)
  
 ## Database Design
 
-### Collection: `companies`
+### Collection: `companie`
 Stores tenant organization records.
 
 | Field | Type | Required | Notes |
