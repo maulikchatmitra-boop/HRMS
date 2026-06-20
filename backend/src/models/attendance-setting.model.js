@@ -1,38 +1,49 @@
 import mongoose from 'mongoose';
 
-const AttendanceSettingSchema = new mongoose.Schema(
+const attendanceSettingSchema = new mongoose.Schema(
   {
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',
       required: true,
-      unique: true,
       index: true,
     },
     fullDayMinutes: {
       type: Number,
+      required: true,
       default: 480,
     },
     halfDayMinutes: {
       type: Number,
+      required: true,
       default: 240,
     },
     fixedBreakMinutes: {
       type: Number,
+      required: true,
       default: 60,
     },
     earlyCheckoutTolerance: {
       type: Number,
+      required: true,
       default: 15,
     },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
+    weekOffDays: {
+      type: [Number],
+      required: true,
+      default: [0, 6], // 0 = Sunday, 6 = Saturday
     },
-    updatedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+    effectiveFrom: {
+      type: Date,
+      required: true,
+      default: () => {
+        const d = new Date();
+        d.setUTCHours(0, 0, 0, 0);
+        return d;
+      },
+    },
+    effectiveTo: {
+      type: Date,
       default: null,
     },
   },
@@ -41,6 +52,9 @@ const AttendanceSettingSchema = new mongoose.Schema(
   }
 );
 
-const AttendanceSetting = mongoose.model('AttendanceSetting', AttendanceSettingSchema, 'attendance_settings');
+// Compound index to support history query and versioning per company
+attendanceSettingSchema.index({ companyId: 1, effectiveFrom: 1 }, { unique: false });
+
+const AttendanceSetting = mongoose.model('AttendanceSetting', attendanceSettingSchema);
 
 export default AttendanceSetting;

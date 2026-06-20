@@ -253,7 +253,7 @@ const Holidays = () => {
             {formError}
           </div>
         )}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <Input
             label="Holiday Name"
             name="name"

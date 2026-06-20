@@ -6,8 +6,6 @@ import Department from '../models/department.model.js';
 import Designation from '../models/designation.model.js';
 import Branch from '../models/branch.model.js';
 import Shift from '../models/shift.model.js';
-import EmployeeType from '../models/employee-type.model.js';
-import WorkLocation from '../models/work-location.model.js';
 import { formatCleanUser } from '../utils/user.utils.js';
 
 /**
@@ -27,14 +25,12 @@ export const createUser = async (companyId, userData, actorId) => {
     userData.reportingManagerId ? User.findOne({ _id: userData.reportingManagerId,   companyId })                  : Promise.resolve(true),
     userData.branchId         ? Branch.findOne({ _id: userData.branchId,             companyId, isDeleted: false }) : Promise.resolve(true),
     userData.shiftId          ? Shift.findOne({ _id: userData.shiftId,               companyId, isDeleted: false }) : Promise.resolve(true),
-    userData.employeeTypeId   ? EmployeeType.findOne({ _id: userData.employeeTypeId, companyId, isDeleted: false }) : Promise.resolve(true),
-    userData.workLocationId   ? WorkLocation.findOne({ _id: userData.workLocationId, companyId, isDeleted: false }) : Promise.resolve(true),
     hashPassword(userData.password),
   ];
 
   const [
     existingUser, role,
-    dep, des, mgr, br, sh, et, wl,
+    dep, des, mgr, br, sh,
     passwordHash
   ] = await Promise.all(checks);
 
@@ -45,8 +41,6 @@ export const createUser = async (companyId, userData, actorId) => {
   if (userData.reportingManagerId && !mgr) throw new Error('The specified reporting manager does not exist in your company.');
   if (userData.branchId         && !br)  throw new Error('The specified branch does not exist in your company.');
   if (userData.shiftId          && !sh)  throw new Error('The specified shift does not exist in your company.');
-  if (userData.employeeTypeId   && !et)  throw new Error('The specified employee type does not exist in your company.');
-  if (userData.workLocationId   && !wl)  throw new Error('The specified work location does not exist in your company.');
 
   // 2. Create user
   const user = new User({
@@ -62,8 +56,6 @@ export const createUser = async (companyId, userData, actorId) => {
     reportingManagerId: userData.reportingManagerId || null,
     branchId:           userData.branchId           || null,
     shiftId:            userData.shiftId            || null,
-    employeeTypeId:     userData.employeeTypeId     || null,
-    workLocationId:     userData.workLocationId     || null,
     joiningDate:        userData.joiningDate        || null,
     dateOfBirth:        userData.dateOfBirth        || null,
     createdBy: actorId,
@@ -101,8 +93,6 @@ export const getUserById = async (companyId, userId) => {
     .populate('reportingManagerId', 'firstName lastName email')
     .populate('branchId', 'name')
     .populate('shiftId', 'name startTime endTime')
-    .populate('employeeTypeId', 'name')
-    .populate('workLocationId', 'name')
     .select('-password');
   
   if (!user) {
@@ -139,7 +129,7 @@ export const getUsers = async (companyId, filter = {}) => {
     ];
   }
 
-  const allowedFilters = ['status', 'roleId', 'departmentId', 'designationId', 'branchId', 'shiftId', 'employeeTypeId', 'workLocationId'];
+  const allowedFilters = ['status', 'roleId', 'departmentId', 'designationId', 'branchId', 'shiftId'];
   allowedFilters.forEach(field => { if (filter[field]) query[field] = filter[field]; });
 
   const [total, users] = await Promise.all([
@@ -151,8 +141,6 @@ export const getUsers = async (companyId, filter = {}) => {
       .populate('reportingManagerId', 'firstName lastName email')
       .populate('branchId', 'name')
       .populate('shiftId', 'name startTime endTime')
-      .populate('employeeTypeId', 'name')
-      .populate('workLocationId', 'name')
       .select('-password')
       .skip(skip)
       .limit(limit)
@@ -173,6 +161,10 @@ export const getUsers = async (companyId, filter = {}) => {
  * @returns {Promise<Object>} Updated user document.
  */
 export const updateUser = async (companyId, userId, updateData, actorId) => {
+  if (userId.toString() === actorId.toString()) {
+    throw new Error('You cannot update your own user account through employee register.');
+  }
+
   const oldUser = await User.findById(userId);
   if (!oldUser) {
     throw new Error('User not found.');
@@ -223,19 +215,11 @@ export const updateUser = async (companyId, userId, updateData, actorId) => {
     const sh = await Shift.findOne({ _id: updateData.shiftId, companyId, isDeleted: false });
     if (!sh) throw new Error('The specified shift does not exist in your company.');
   }
-  if (updateData.employeeTypeId) {
-    const et = await EmployeeType.findOne({ _id: updateData.employeeTypeId, companyId, isDeleted: false });
-    if (!et) throw new Error('The specified employee type does not exist in your company.');
-  }
-  if (updateData.workLocationId) {
-    const wl = await WorkLocation.findOne({ _id: updateData.workLocationId, companyId, isDeleted: false });
-    if (!wl) throw new Error('The specified work location does not exist in your company.');
-  }
 
   const allowedUpdates = [
     'firstName', 'lastName', 'email', 'roleId', 'status',
     'departmentId', 'designationId', 'reportingManagerId',
-    'branchId', 'shiftId', 'employeeTypeId', 'workLocationId',
+    'branchId', 'shiftId',
     'joiningDate', 'dateOfBirth'
   ];
   const actualUpdates = {
@@ -347,8 +331,6 @@ export const terminateUser = async (companyId, userId, actorId) => {
     .populate('reportingManagerId', 'firstName lastName email')
     .populate('branchId', 'name')
     .populate('shiftId', 'name startTime endTime')
-    .populate('employeeTypeId', 'name')
-    .populate('workLocationId', 'name')
     .select('-password');
 
   const cleanEmployee = formatCleanUser(updated);

@@ -24,12 +24,44 @@ const MyAttendance = () => {
   const [earlyModalOpen, setEarlyModalOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [earlyError, setEarlyError] = useState('');
+  const [earlyFieldErrors, setEarlyFieldErrors] = useState({});
 
   // Regularize Modal
   const [regModalOpen, setRegModalOpen] = useState(false);
   const [regDate, setRegDate] = useState('');
   const [regReason, setRegReason] = useState('');
   const [regError, setRegError] = useState('');
+  const [regFieldErrors, setRegFieldErrors] = useState({});
+
+  const openEarlyModal = () => {
+    setEarlyError('');
+    setEarlyFieldErrors({});
+    setReason('');
+    setEarlyModalOpen(true);
+  };
+
+  const closeEarlyModal = () => {
+    setEarlyModalOpen(false);
+    setEarlyError('');
+    setEarlyFieldErrors({});
+    setReason('');
+  };
+
+  const openRegModal = () => {
+    setRegError('');
+    setRegFieldErrors({});
+    setRegDate('');
+    setRegReason('');
+    setRegModalOpen(true);
+  };
+
+  const closeRegModal = () => {
+    setRegModalOpen(false);
+    setRegError('');
+    setRegFieldErrors({});
+    setRegDate('');
+    setRegReason('');
+  };
 
   const hasShift = user && (user.shift || user.shiftId);
 
@@ -80,6 +112,7 @@ const MyAttendance = () => {
     setRegDate(dateStr);
     setRegReason('');
     setRegError('');
+    setRegFieldErrors({});
     setRegModalOpen(true);
   };
 
@@ -165,8 +198,7 @@ const MyAttendance = () => {
     setError('');
     try {
       await axiosClient.post('/attendance/check-out', { reason: earlyReason });
-      setEarlyModalOpen(false);
-      setReason('');
+      closeEarlyModal();
       fetchLogs();
       fetchSummary();
     } catch (err) {
@@ -187,16 +219,16 @@ const MyAttendance = () => {
     if (currentTime.getTime() >= expected.getTime() - toleranceMs) {
       executeCheckout();
     } else {
-      setEarlyError('');
-      setReason('');
-      setEarlyModalOpen(true);
+      openEarlyModal();
     }
   };
 
   const handleEarlyCheckoutSubmit = (e) => {
     e.preventDefault();
+    setEarlyError('');
+    setEarlyFieldErrors({});
     if (!reason.trim()) {
-      setEarlyError('Justification reason is required.');
+      setEarlyFieldErrors({ reason: 'Justification reason is required.' });
       return;
     }
     executeCheckout(reason);
@@ -204,20 +236,29 @@ const MyAttendance = () => {
 
   const handleRegularizeSubmit = async (e) => {
     e.preventDefault();
-    if (!regDate || !regReason.trim()) {
-      setRegError('All fields are required.');
+    setRegError('');
+    setRegFieldErrors({});
+
+    const errors = {};
+    if (!regDate) {
+      errors.regDate = 'Attendance date is required.';
+    }
+    if (!regReason.trim()) {
+      errors.regReason = 'Explanation reason is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setRegFieldErrors(errors);
       return;
     }
+
     setActionLoading(true);
-    setRegError('');
     try {
       await axiosClient.post('/attendance/regularize', {
         attendanceDate: regDate,
         regularizationReason: regReason,
       });
-      setRegModalOpen(false);
-      setRegDate('');
-      setRegReason('');
+      closeRegModal();
       fetchLogs();
       fetchSummary();
     } catch (err) {
@@ -637,8 +678,8 @@ const MyAttendance = () => {
 
       {/* Early Checkout Modal */}
       {earlyModalOpen && (
-        <Modal isOpen={earlyModalOpen} title="Early Check Out Justification" onClose={() => setEarlyModalOpen(false)}>
-          <form onSubmit={handleEarlyCheckoutSubmit} className="flex flex-col gap-4">
+        <Modal isOpen={earlyModalOpen} title="Early Check Out Justification" onClose={closeEarlyModal}>
+          <form onSubmit={handleEarlyCheckoutSubmit} noValidate className="flex flex-col gap-4">
             <p className="text-sm text-slate-500 font-medium">
               You are checking out before the expected end of shift. Please provide an emergency or early exit explanation to submit your check-out.
             </p>
@@ -650,9 +691,10 @@ const MyAttendance = () => {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               required
+              error={earlyFieldErrors.reason}
             />
             <div className="flex justify-end gap-2 mt-2">
-              <Button variant="secondary" onClick={() => setEarlyModalOpen(false)}>
+              <Button variant="secondary" onClick={closeEarlyModal}>
                 Cancel
               </Button>
               <Button type="submit" variant="warning" loading={actionLoading}>
@@ -665,8 +707,8 @@ const MyAttendance = () => {
 
       {/* Regularization Modal */}
       {regModalOpen && (
-        <Modal isOpen={regModalOpen} title="Submit Regularization Request" onClose={() => setRegModalOpen(false)}>
-          <form onSubmit={handleRegularizeSubmit} className="flex flex-col gap-4">
+        <Modal isOpen={regModalOpen} title="Submit Regularization Request" onClose={closeRegModal}>
+          <form onSubmit={handleRegularizeSubmit} noValidate className="flex flex-col gap-4">
             <p className="text-sm text-slate-500 font-medium">
               Request correction for a missed check-in/out or incorrect attendance logs.
             </p>
@@ -677,6 +719,7 @@ const MyAttendance = () => {
               value={regDate}
               onChange={(e) => setRegDate(e.target.value)}
               required
+              error={regFieldErrors.regDate}
             />
             <Input
               label="Explanation Reason"
@@ -685,9 +728,10 @@ const MyAttendance = () => {
               value={regReason}
               onChange={(e) => setRegReason(e.target.value)}
               required
+              error={regFieldErrors.regReason}
             />
             <div className="flex justify-end gap-2 mt-2">
-              <Button variant="secondary" onClick={() => setRegModalOpen(false)}>
+              <Button variant="secondary" onClick={closeRegModal}>
                 Cancel
               </Button>
               <Button type="submit" variant="primary" loading={actionLoading}>

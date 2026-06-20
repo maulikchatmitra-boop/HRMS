@@ -4,6 +4,7 @@ import LeaveType from '../models/leave-type.model.js';
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
 import HolidayCalendar from '../models/holiday-calendar.model.js';
+import AttendanceSetting from '../models/attendance-setting.model.js';
 import { logAction } from './auditLog.service.js';
 import { createNotification } from './leave-notification.service.js';
 
@@ -41,12 +42,30 @@ export const calculateWorkingDays = async (companyId, fromDate, toDate, isHalfDa
 
   const holidayTimestamps = holidays.map((h) => startOfDay(h.date).getTime());
 
+  const settingsList = await AttendanceSetting.find({ companyId })
+    .sort({ effectiveFrom: 1 })
+    .lean();
+
+  const getSettingsForDateInMemory = (date) => {
+    const checkMs = date.getTime();
+
+    const match = settingsList.find((s) => {
+      const fromMs = new Date(s.effectiveFrom).getTime();
+      const toMs = s.effectiveTo ? new Date(s.effectiveTo).getTime() : Infinity;
+      return checkMs >= fromMs && checkMs <= toMs;
+    });
+
+    return match || { weekOffDays: [0, 6] };
+  };
+
   let workingDays = 0;
   const current = new Date(start);
 
   while (current <= end) {
     const dayOfWeek = current.getUTCDay(); // 0 = Sunday, 6 = Saturday
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const activeSetting = getSettingsForDateInMemory(current);
+    const weekOffDays = activeSetting.weekOffDays || [0, 6];
+    const isWeekend = weekOffDays.includes(dayOfWeek);
     const isHoliday = holidayTimestamps.includes(current.getTime());
 
     if (!isWeekend && !isHoliday) {
@@ -122,9 +141,23 @@ export const createLeaveRequest = async (companyId, data, actorId) => {
                               applicantRoleName.toLowerCase().includes('leader');
   const isApplicantHR = applicantRoleName.toLowerCase().includes('hr');
 
+  let isManagerHRorAdmin = false;
+  if (employee.reportingManagerId) {
+    const manager = await User.findOne({ _id: employee.reportingManagerId, companyId })
+      .populate('roleId')
+      .lean();
+    if (manager && manager.roleId) {
+      const managerRoleName = manager.roleId.roleName || '';
+      const lowerRole = managerRoleName.toLowerCase();
+      if (lowerRole.includes('hr') || lowerRole.includes('admin')) {
+        isManagerHRorAdmin = true;
+      }
+    }
+  }
+
   let status = 'pending_manager';
-  if (!employee.reportingManagerId || isApplicantManager || isApplicantHR) {
-    status = 'pending_hr'; // Skip manager stage automatically for Manager or HR applicants
+  if (!employee.reportingManagerId || isApplicantManager || isApplicantHR || isManagerHRorAdmin) {
+    status = 'pending_hr'; // Skip manager stage automatically for Manager/HR applicants or HR/Admin reporting manager
   }
 
   const employeeName = `${employee.firstName} ${employee.lastName}`;
@@ -158,25 +191,33 @@ export const createLeaveRequest = async (companyId, data, actorId) => {
 
   // 6. Dispatch Notifications
   if (status === 'pending_manager') {
-    await createNotification({
-      companyId,
-      userId: employee.reportingManagerId,
-      type: 'leave_applied',
-      referenceId: saved._id,
-      title: 'New Leave Request',
-      message: `${employeeName} has applied for ${totalDays} day(s) of leave starting ${new Date(fromDate).toLocaleDateString()}.`,
-    });
-  } else {
-    // Notify HR
-    const hrUsers = await getHRUsers(companyId);
-    for (const hr of hrUsers) {
+    if (employee.reportingManagerId && employee.reportingManagerId.toString() !== actorId.toString()) {
       await createNotification({
         companyId,
-        userId: hr._id,
+        userId: employee.reportingManagerId,
         type: 'leave_applied',
         referenceId: saved._id,
-        title: 'New Leave Request (Pending HR)',
-        message: `${employeeName} has applied for ${totalDays} day(s) of leave starting ${new Date(fromDate).toLocaleDateString()} (No Manager Assigned).`,
+        title: 'New Leave Request',
+        message: `${employeeName} has applied for ${totalDays} day(s) of leave starting ${new Date(fromDate).toLocaleDateString()}.`,
+      });
+    }
+  } else {
+    // If HR applies, only notify Admins (excluding the applicant themselves).
+    // If someone else (e.g. manager or employee without manager) applies, notify HR & Admins (excluding the applicant themselves).
+    const recipients = isApplicantHR ? await getAdminUsers(companyId) : await getHRUsers(companyId);
+    for (const recipient of recipients) {
+      if (recipient._id.toString() === actorId.toString()) {
+        continue;
+      }
+      await createNotification({
+        companyId,
+        userId: recipient._id,
+        type: 'leave_applied',
+        referenceId: saved._id,
+        title: isApplicantHR ? 'New Leave Request (Pending Admin Approval)' : 'New Leave Request (Pending HR)',
+        message: isApplicantHR
+          ? `${employeeName} (HR) has applied for ${totalDays} day(s) of leave starting ${new Date(fromDate).toLocaleDateString()}.`
+          : `${employeeName} has applied for ${totalDays} day(s) of leave starting ${new Date(fromDate).toLocaleDateString()} (No Manager Assigned).`,
       });
     }
   }
@@ -209,6 +250,9 @@ export const handleLeaveAction = async (companyId, id, actionData, actorId, acto
   const employee = await User.findOne({ _id: request.employeeId, companyId }).populate('roleId').lean();
   const oldData = request.toObject();
 
+  const applicantRoleName = employee?.roleId?.roleName || '';
+  const isApplicantHR = applicantRoleName.toLowerCase().includes('hr');
+
   // 1. Process Cancel Action (Employee only)
   if (action === 'cancel') {
     if (request.employeeId.toString() !== actorId.toString()) {
@@ -227,27 +271,31 @@ export const handleLeaveAction = async (companyId, id, actionData, actorId, acto
 
     // Notify manager and/or HR/Admins
     if (oldData.status === 'pending_manager' && employee && employee.reportingManagerId) {
-      await createNotification({
-        companyId,
-        userId: employee.reportingManagerId,
-        type: 'leave_cancelled',
-        referenceId: saved._id,
-        title: 'Leave Request Cancelled',
-        message: `${request.employeeName} has cancelled their leave request.`,
-      });
-    } else if (oldData.status === 'pending_hr') {
-      const hrUsers = await getHRUsers(companyId);
-      for (const hr of hrUsers) {
+      if (employee.reportingManagerId.toString() !== actorId.toString()) {
         await createNotification({
           companyId,
-          userId: hr._id,
+          userId: employee.reportingManagerId,
           type: 'leave_cancelled',
           referenceId: saved._id,
           title: 'Leave Request Cancelled',
           message: `${request.employeeName} has cancelled their leave request.`,
         });
       }
-      if (employee && employee.reportingManagerId) {
+    } else if (oldData.status === 'pending_hr') {
+      const recipients = isApplicantHR ? await getAdminUsers(companyId) : await getHRUsers(companyId);
+      for (const recipient of recipients) {
+        if (recipient._id.toString() !== actorId.toString()) {
+          await createNotification({
+            companyId,
+            userId: recipient._id,
+            type: 'leave_cancelled',
+            referenceId: saved._id,
+            title: 'Leave Request Cancelled',
+            message: `${request.employeeName} has cancelled their leave request.`,
+          });
+        }
+      }
+      if (employee && employee.reportingManagerId && employee.reportingManagerId.toString() !== actorId.toString()) {
         await createNotification({
           companyId,
           userId: employee.reportingManagerId,
@@ -258,7 +306,7 @@ export const handleLeaveAction = async (companyId, id, actionData, actorId, acto
         });
       }
     } else {
-      if (employee && employee.reportingManagerId) {
+      if (employee && employee.reportingManagerId && employee.reportingManagerId.toString() !== actorId.toString()) {
         await createNotification({
           companyId,
           userId: employee.reportingManagerId,
@@ -268,16 +316,18 @@ export const handleLeaveAction = async (companyId, id, actionData, actorId, acto
           message: `${request.employeeName} has cancelled their leave request.`,
         });
       }
-      const hrUsers = await getHRUsers(companyId);
-      for (const hr of hrUsers) {
-        await createNotification({
-          companyId,
-          userId: hr._id,
-          type: 'leave_cancelled',
-          referenceId: saved._id,
-          title: 'Leave Request Cancelled',
-          message: `${request.employeeName} has cancelled their leave request.`,
-        });
+      const recipients = isApplicantHR ? await getAdminUsers(companyId) : await getHRUsers(companyId);
+      for (const recipient of recipients) {
+        if (recipient._id.toString() !== actorId.toString()) {
+          await createNotification({
+            companyId,
+            userId: recipient._id,
+            type: 'leave_cancelled',
+            referenceId: saved._id,
+            title: 'Leave Request Cancelled',
+            message: `${request.employeeName} has cancelled their leave request.`,
+          });
+        }
       }
     }
 
@@ -293,9 +343,6 @@ export const handleLeaveAction = async (companyId, id, actionData, actorId, acto
   }
 
   // For actions other than cancel (approve, reject, send_back)
-  const applicantRoleName = employee?.roleId?.roleName || '';
-  const isApplicantHR = applicantRoleName.toLowerCase().includes('hr');
-  
   if (isApplicantHR) {
     const actor = await User.findById(actorId).populate('roleId').lean();
     const isActorAdmin = actor?.isSuperAdmin || (actor?.roleId?.roleName && actor.roleId.roleName.toLowerCase().includes('admin'));
@@ -324,25 +371,29 @@ export const handleLeaveAction = async (companyId, id, actionData, actorId, acto
       // Notify HR
       const hrUsers = await getHRUsers(companyId);
       for (const hr of hrUsers) {
-        await createNotification({
-          companyId,
-          userId: hr._id,
-          type: 'leave_applied',
-          referenceId: saved._id,
-          title: 'Leave Request Pending HR Approval',
-          message: `${request.employeeName}'s leave request has been approved by manager and is pending HR approval.`,
-        });
+        if (hr._id.toString() !== actorId.toString()) {
+          await createNotification({
+            companyId,
+            userId: hr._id,
+            type: 'leave_applied',
+            referenceId: saved._id,
+            title: 'Leave Request Pending HR Approval',
+            message: `${request.employeeName}'s leave request has been approved by manager and is pending HR approval.`,
+          });
+        }
       }
 
       // Notify Employee
-      await createNotification({
-        companyId,
-        userId: request.employeeId,
-        type: 'leave_approved',
-        referenceId: saved._id,
-        title: 'Leave Request Approved by Manager',
-        message: `Your leave request starting ${request.fromDate.toLocaleDateString()} has been approved by your manager and is pending final HR approval.`,
-      });
+      if (request.employeeId.toString() !== actorId.toString()) {
+        await createNotification({
+          companyId,
+          userId: request.employeeId,
+          type: 'leave_approved',
+          referenceId: saved._id,
+          title: 'Leave Request Approved by Manager',
+          message: `Your leave request starting ${request.fromDate.toLocaleDateString()} has been approved by your manager and is pending final HR approval.`,
+        });
+      }
 
       await logAction({ companyId, userId: actorId, module: 'leave_request', action: 'approve_manager', oldData, newData: saved.toObject() });
       return saved;
@@ -589,6 +640,25 @@ const getHRUsers = async (companyId) => {
   const roles = await Role.find({
     companyId,
     roleName: { $regex: /hr|admin/i },
+  }).select('_id').lean();
+
+  const roleIds = roles.map((r) => r._id);
+  if (roleIds.length === 0) return [];
+
+  return await User.find({
+    companyId,
+    roleId: { $in: roleIds },
+    status: 'active',
+  }).select('_id').lean();
+};
+
+/**
+ * Private helper to fetch all active Admin users in the company.
+ */
+const getAdminUsers = async (companyId) => {
+  const roles = await Role.find({
+    companyId,
+    roleName: { $regex: /admin/i },
   }).select('_id').lean();
 
   const roleIds = roles.map((r) => r._id);

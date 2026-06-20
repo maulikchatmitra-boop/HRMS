@@ -22,9 +22,7 @@ const permissionsToSeed = [
   { module: 'employee', action: 'edit',   permissionKey: 'employee.edit' },
   { module: 'employee', action: 'delete', permissionKey: 'employee.delete' },
 
-  // Company module permissions
-  { module: 'company',  action: 'view',   permissionKey: 'company.view' },
-  { module: 'company',  action: 'edit',   permissionKey: 'company.edit' },
+  // Role module permissions
 
   // Role module permissions
   { module: 'role',     action: 'view',   permissionKey: 'role.view' },
@@ -57,17 +55,7 @@ const permissionsToSeed = [
   { module: 'shift', action: 'edit',   permissionKey: 'shift.edit' },
   { module: 'shift', action: 'delete', permissionKey: 'shift.delete' },
 
-  // Employee Type permissions
-  { module: 'employeeType', action: 'create', permissionKey: 'employeeType.create' },
-  { module: 'employeeType', action: 'view',   permissionKey: 'employeeType.view' },
-  { module: 'employeeType', action: 'edit',   permissionKey: 'employeeType.edit' },
-  { module: 'employeeType', action: 'delete', permissionKey: 'employeeType.delete' },
 
-  // Work Location permissions
-  { module: 'workLocation', action: 'create', permissionKey: 'workLocation.create' },
-  { module: 'workLocation', action: 'view',   permissionKey: 'workLocation.view' },
-  { module: 'workLocation', action: 'edit',   permissionKey: 'workLocation.edit' },
-  { module: 'workLocation', action: 'delete', permissionKey: 'workLocation.delete' },
 
   // Holiday Calendar permissions
   { module: 'holiday', action: 'create', permissionKey: 'holiday.create' },

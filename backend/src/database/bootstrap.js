@@ -10,9 +10,7 @@ const systemPermissions = [
   { module: 'employee', action: 'edit',   permissionKey: 'employee.edit' },
   { module: 'employee', action: 'delete', permissionKey: 'employee.delete' },
 
-  // Company module permissions
-  { module: 'company',  action: 'view',   permissionKey: 'company.view' },
-  { module: 'company',  action: 'edit',   permissionKey: 'company.edit' },
+  // Role module permissions
 
   // Role module permissions
   { module: 'role',     action: 'view',   permissionKey: 'role.view' },
@@ -45,17 +43,7 @@ const systemPermissions = [
   { module: 'shift', action: 'edit',   permissionKey: 'shift.edit' },
   { module: 'shift', action: 'delete', permissionKey: 'shift.delete' },
 
-  // Employee Type permissions
-  { module: 'employeeType', action: 'create', permissionKey: 'employeeType.create' },
-  { module: 'employeeType', action: 'view',   permissionKey: 'employeeType.view' },
-  { module: 'employeeType', action: 'edit',   permissionKey: 'employeeType.edit' },
-  { module: 'employeeType', action: 'delete', permissionKey: 'employeeType.delete' },
 
-  // Work Location permissions
-  { module: 'workLocation', action: 'create', permissionKey: 'workLocation.create' },
-  { module: 'workLocation', action: 'view',   permissionKey: 'workLocation.view' },
-  { module: 'workLocation', action: 'edit',   permissionKey: 'workLocation.edit' },
-  { module: 'workLocation', action: 'delete', permissionKey: 'workLocation.delete' },
 
   // Holiday Calendar permissions
   { module: 'holiday', action: 'create', permissionKey: 'holiday.create' },
@@ -112,6 +100,16 @@ export const autoBootstrapDatabase = async () => {
   try {
     console.log('🔄 Checking database system permissions & mapping configurations...');
 
+    // 0. Clean up obsolete permissions from DB
+    const keysInSystem = systemPermissions.map(p => p.permissionKey);
+    const obsoletePermissions = await Permission.find({ permissionKey: { $nin: keysInSystem } });
+    if (obsoletePermissions.length > 0) {
+      const obsoleteIds = obsoletePermissions.map(p => p._id);
+      await RolePermission.deleteMany({ permissionId: { $in: obsoleteIds } });
+      await Permission.deleteMany({ _id: { $in: obsoleteIds } });
+      console.log(`- Removed ${obsoletePermissions.length} obsolete permissions from database.`);
+    }
+
     // 1. Seed global permissions
     const seededPermissions = [];
     for (const perm of systemPermissions) {
@@ -146,8 +144,6 @@ export const autoBootstrapDatabase = async () => {
             'designation.view',
             'branch.view',
             'shift.view',
-            'employeeType.view',
-            'workLocation.view',
             'holiday.view',
             'leaveType.view',
             'leavePolicy.view',

@@ -23,6 +23,7 @@ const Roles = () => {
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [editRole, setEditRole] = useState(null);
   const [roleName, setRoleName] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Permission Modals
   const [permModalOpen, setPermModalOpen] = useState(false);
@@ -54,6 +55,13 @@ const Roles = () => {
   const handleRoleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+    setFieldErrors({});
+
+    if (!roleName.trim()) {
+      setFieldErrors({ roleName: 'Role name is required.' });
+      return;
+    }
+
     setBtnLoading(true);
 
     try {
@@ -88,6 +96,7 @@ const Roles = () => {
     setEditRole(role);
     setRoleName(role ? role.roleName : '');
     setFormError('');
+    setFieldErrors({});
     setRoleModalOpen(true);
   };
 
@@ -230,7 +239,7 @@ const Roles = () => {
       {/* Modal - Create/Edit Role */}
       <Modal
         isOpen={roleModalOpen}
-        onClose={() => setRoleModalOpen(false)}
+        onClose={() => { setRoleModalOpen(false); setFieldErrors({}); }}
         title={editRole ? 'Edit Role' : 'Create Role'}
       >
         {formError && (
@@ -238,7 +247,7 @@ const Roles = () => {
             {formError}
           </div>
         )}
-        <form onSubmit={handleRoleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleRoleSubmit} noValidate className="flex flex-col gap-4">
           <Input
             label="Role Name"
             name="roleName"
@@ -246,9 +255,10 @@ const Roles = () => {
             onChange={(e) => setRoleName(e.target.value)}
             required
             placeholder="e.g. Finance Analyst"
+            error={fieldErrors.roleName}
           />
           <div className="flex justify-end gap-3 mt-4">
-            <Button variant="secondary" onClick={() => setRoleModalOpen(false)}>
+            <Button variant="secondary" onClick={() => { setRoleModalOpen(false); setFieldErrors({}); }}>
               Cancel
             </Button>
             <Button type="submit" loading={btnLoading}>
@@ -274,7 +284,7 @@ const Roles = () => {
         {permLoading ? (
           <Spinner size="md" />
         ) : (
-          <form onSubmit={handlePermissionSubmit}>
+          <form onSubmit={handlePermissionSubmit} noValidate>
             <div className="flex flex-col gap-6 max-h-[60vh] overflow-y-auto p-1">
               {Object.entries(
                 allPermissions.reduce((acc, perm) => {
@@ -292,10 +302,7 @@ const Roles = () => {
                   branch: 'Branches',
                   shift: 'Shifts',
                   holiday: 'Holidays',
-                  company: 'Company Profile',
-                  audit: 'Audit Logs',
-                  employeeType: 'Employee Types',
-                  workLocation: 'Work Locations'
+                  audit: 'Audit Logs'
                 };
                 return (
                   <div key={moduleName} className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50">

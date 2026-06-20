@@ -63,7 +63,7 @@ const Sidebar = () => {
     // 2. Employees (registry)
     if (hasPermission(user, 'employee.view')) {
       if (category === 'Manager') {
-        links.push({ path: '/manager/employees', label: 'My Team', icon: FiUsers });
+        links.push({ path: '/manager/employees', label: 'Employees', icon: FiUsers });
       } else {
         links.push({ path: '/hr/employees', label: 'Employees', icon: FiUsers });
       }
@@ -376,7 +376,7 @@ const Sidebar = () => {
           </div>
         )}
 
-        <div className="pt-4 mt-4 border-t border-slate-100">
+        <div className="pt-4 mt-4 border-t border-slate-100 space-y-1">
           <NavLink
             to="/profile"
             className={({ isActive }) =>
@@ -390,6 +390,22 @@ const Sidebar = () => {
             <FiUser className="w-4 h-4" />
             <span>My Profile</span>
           </NavLink>
+
+          {!user.isSuperAdmin && getRoleCategory(user.role?.roleName) === 'Company Admin' && (
+            <NavLink
+              to="/admin/settings"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  isActive
+                    ? 'bg-indigo-50 text-indigo-600 shadow-xs'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                }`
+              }
+            >
+              <FiSettings className="w-4 h-4" />
+              <span>Settings</span>
+            </NavLink>
+          )}
         </div>
       </nav>
 

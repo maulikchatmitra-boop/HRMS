@@ -51,14 +51,6 @@ export const formatCleanUser = (user) => {
       startTime: u.shiftId.startTime || '',
       endTime:   u.shiftId.endTime   || ''
     } : null,
-    employeeType: u.employeeTypeId ? {
-      _id:  u.employeeTypeId._id  || u.employeeTypeId,
-      name: u.employeeTypeId.name || ''
-    } : null,
-    workLocation: u.workLocationId ? {
-      _id:  u.workLocationId._id  || u.workLocationId,
-      name: u.workLocationId.name || ''
-    } : null,
     createdAt: u.createdAt,
     updatedAt: u.updatedAt
   };

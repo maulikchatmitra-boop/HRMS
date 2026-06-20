@@ -163,9 +163,11 @@ const LeaveBalances = () => {
               <p className="font-bold text-slate-800 text-sm">
                 {emp.firstName || ''} {emp.lastName || ''}
               </p>
-              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                {emp.employeeCode || 'No Code'}
-              </p>
+              {emp.employeeCode && (
+                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                  {emp.employeeCode}
+                </p>
+              )}
             </div>
           </div>
         );
@@ -304,7 +306,7 @@ const LeaveBalances = () => {
               onChange={(e) => setSelectedEmployeeId(e.target.value)}
               options={employees.map((emp) => ({
                 value: emp._id,
-                label: `${emp.firstName} ${emp.lastName} (${emp.employeeCode || 'No Code'})`,
+                label: emp.employeeCode ? `${emp.firstName} ${emp.lastName} (${emp.employeeCode})` : `${emp.firstName} ${emp.lastName}`,
               }))}
               placeholder="Choose an employee..."
               required

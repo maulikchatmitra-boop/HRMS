@@ -41,7 +41,27 @@ const AttendanceReports = () => {
   const [checkOutTime, setCheckOutTime] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [actionLoading, setActionLoading] = useState(false);
+
+  const openOverrideModal = () => {
+    setFormError('');
+    setFieldErrors({});
+    setOverrideModalOpen(true);
+  };
+
+  const closeOverrideModal = () => {
+    setFormError('');
+    setFieldErrors({});
+    setOverrideModalOpen(false);
+    // Reset form fields
+    setSelectedEmpId('');
+    setOverrideDate('');
+    setOverrideStatus('present');
+    setCheckInTime('');
+    setCheckOutTime('');
+    setOverrideReason('');
+  };
 
   const canManage = hasPermission(user, 'attendance.manage');
 
@@ -75,11 +95,25 @@ const AttendanceReports = () => {
 
   const handleOverrideSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedEmpId || !overrideDate || !overrideReason.trim()) {
-      setFormError('Employee, date, and override reason are required.');
+    setFormError('');
+    setFieldErrors({});
+
+    const errors = {};
+    if (!selectedEmpId) {
+      errors.selectedEmpId = 'Employee selection is required.';
+    }
+    if (!overrideDate) {
+      errors.overrideDate = 'Date of attendance is required.';
+    }
+    if (!overrideReason.trim()) {
+      errors.overrideReason = 'Override justification reason is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
-    setFormError('');
+
     setActionLoading(true);
     try {
       await axiosClient.post('/attendance/override', {
@@ -90,14 +124,7 @@ const AttendanceReports = () => {
         checkOutTime: checkOutTime ? new Date(checkOutTime).toISOString() : null,
         overrideReason,
       });
-      setOverrideModalOpen(false);
-      // Reset form
-      setSelectedEmpId('');
-      setOverrideDate('');
-      setOverrideStatus('present');
-      setCheckInTime('');
-      setCheckOutTime('');
-      setOverrideReason('');
+      closeOverrideModal();
       fetchLogs();
     } catch (err) {
       setFormError(extractErrorMessage(err));
@@ -220,7 +247,7 @@ const AttendanceReports = () => {
 
         <div className="flex items-center gap-2">
           {canManage && (
-            <Button variant="outline" icon={FiEdit} onClick={() => setOverrideModalOpen(true)}>
+            <Button variant="outline" icon={FiEdit} onClick={openOverrideModal}>
               Override Attendance
             </Button>
           )}
@@ -275,8 +302,8 @@ const AttendanceReports = () => {
 
       {/* Admin Override Modal */}
       {overrideModalOpen && (
-        <Modal isOpen={overrideModalOpen} title="HR / Admin Attendance Override" onClose={() => setOverrideModalOpen(false)}>
-          <form onSubmit={handleOverrideSubmit} className="flex flex-col gap-4">
+        <Modal isOpen={overrideModalOpen} title="HR / Admin Attendance Override" onClose={closeOverrideModal}>
+          <form onSubmit={handleOverrideSubmit} noValidate className="flex flex-col gap-4">
             <p className="text-sm text-slate-500 font-medium">
               Manually overwrite or force insert an attendance record for any employee.
             </p>
@@ -293,6 +320,7 @@ const AttendanceReports = () => {
                 label: `${emp.firstName} ${emp.lastName} (${emp.email})`
               }))}
               required
+              error={fieldErrors.selectedEmpId}
             />
 
             <Input
@@ -301,6 +329,7 @@ const AttendanceReports = () => {
               value={overrideDate}
               onChange={(e) => setOverrideDate(e.target.value)}
               required
+              error={fieldErrors.overrideDate}
             />
 
             <div className="grid grid-cols-2 gap-4">
@@ -341,10 +370,11 @@ const AttendanceReports = () => {
               value={overrideReason}
               onChange={(e) => setOverrideReason(e.target.value)}
               required
+              error={fieldErrors.overrideReason}
             />
 
             <div className="flex justify-end gap-2 mt-2">
-              <Button variant="secondary" onClick={() => setOverrideModalOpen(false)}>
+              <Button variant="secondary" onClick={closeOverrideModal}>
                 Cancel
               </Button>
               <Button type="submit" variant="primary" loading={actionLoading}>

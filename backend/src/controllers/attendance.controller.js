@@ -292,3 +292,31 @@ export const getCompanyMonthlySummary = async (req, res, next) => {
   }
 };
 
+export const getSettings = async (req, res, next) => {
+  try {
+    const { companyId } = req.user;
+    const data = await attendanceService.getCompanySettings(companyId);
+    return res.status(200).json({
+      success: true,
+      data,
+      message: 'Attendance settings retrieved successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSettings = async (req, res, next) => {
+  try {
+    const { companyId } = req.user;
+    const data = await attendanceService.updateCompanySettings(companyId, req.body);
+    return res.status(200).json({
+      success: true,
+      data,
+      message: 'Attendance settings updated successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -21,6 +21,7 @@ const Designations = () => {
   const [title, setTitle] = useState('');
   const [btnLoading, setBtnLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const canCreate = hasPermission(user, 'designation.create');
   const canEdit = hasPermission(user, 'designation.edit');
@@ -45,6 +46,13 @@ const Designations = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+    setFieldErrors({});
+
+    if (!title.trim()) {
+      setFieldErrors({ title: 'Designation title is required.' });
+      return;
+    }
+
     setBtnLoading(true);
 
     try {
@@ -79,6 +87,7 @@ const Designations = () => {
     setEditDesig(desig);
     setTitle(desig ? desig.title : '');
     setFormError('');
+    setFieldErrors({});
     setModalOpen(true);
   };
 
@@ -159,7 +168,7 @@ const Designations = () => {
 
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setFieldErrors({}); }}
         title={editDesig ? 'Edit Designation' : 'Create Designation'}
       >
         {formError && (
@@ -167,7 +176,7 @@ const Designations = () => {
             {formError}
           </div>
         )}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <Input
             label="Designation Title"
             name="title"
@@ -175,9 +184,10 @@ const Designations = () => {
             onChange={(e) => setTitle(e.target.value)}
             required
             placeholder="e.g. Senior Software Architect"
+            error={fieldErrors.title}
           />
           <div className="flex justify-end gap-3 mt-4">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+            <Button variant="secondary" onClick={() => { setModalOpen(false); setFieldErrors({}); }}>
               Cancel
             </Button>
             <Button type="submit" loading={btnLoading}>

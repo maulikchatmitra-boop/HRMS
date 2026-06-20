@@ -99,9 +99,7 @@ export const login = async (companyCode, email, password) => {
   .populate('designationId', 'title')
   .populate('reportingManagerId', 'firstName lastName email')
   .populate('branchId', 'name')
-  .populate('shiftId', 'name startTime endTime')
-  .populate('employeeTypeId', 'name')
-  .populate('workLocationId', 'name');
+  .populate('shiftId', 'name startTime endTime');
 
   if (!user) {
     const err = new Error('Invalid email or password.');
@@ -327,8 +325,6 @@ export const getCurrentUser = async (userId, companyId) => {
     .populate('reportingManagerId', 'firstName lastName email')
     .populate('branchId', 'name')
     .populate('shiftId', 'name startTime endTime')
-    .populate('employeeTypeId', 'name')
-    .populate('workLocationId', 'name')
     .select('-password');
 
   if (!user) throw new Error('User session not found.');
@@ -486,9 +482,7 @@ export const refreshSession = async (refreshToken) => {
       .populate('designationId', 'title')
       .populate('reportingManagerId', 'firstName lastName email')
       .populate('branchId', 'name')
-      .populate('shiftId', 'name startTime endTime')
-      .populate('employeeTypeId', 'name')
-      .populate('workLocationId', 'name');
+      .populate('shiftId', 'name startTime endTime');
     if (!user || user.status !== 'active') {
       throw new Error('User session is invalid or user has been deactivated.');
     }

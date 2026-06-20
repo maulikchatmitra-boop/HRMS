@@ -137,6 +137,19 @@ const LeaveRequests = () => {
     }
   };
 
+  const [weekOffDays, setWeekOffDays] = useState([0, 6]);
+
+  const fetchWeekOffDays = async () => {
+    try {
+      const res = await axiosClient.get('/attendance/settings');
+      if (res.data && res.data.data && res.data.data.weekOffDays) {
+        setWeekOffDays(res.data.data.weekOffDays);
+      }
+    } catch (err) {
+      console.error('Error fetching settings/week-offs:', err);
+    }
+  };
+
   const fetchHolidays = async () => {
     try {
       const res = await axiosClient.get('/holidays?limit=100');
@@ -162,6 +175,7 @@ const LeaveRequests = () => {
   useEffect(() => {
     fetchLeaveTypes();
     fetchHolidays();
+    fetchWeekOffDays();
   }, []);
 
   // Sync toDate with fromDate when isHalfDay is active
@@ -201,8 +215,8 @@ const LeaveRequests = () => {
       return;
     }
     const day = new Date(val).getUTCDay();
-    if (day === 0 || day === 6) {
-      setApplyFieldErrors(prev => ({ ...prev, fromDate: 'Saturdays and Sundays cannot be selected as leave days.' }));
+    if (weekOffDays.includes(day)) {
+      setApplyFieldErrors(prev => ({ ...prev, fromDate: 'The selected date falls on a configured week-off day.' }));
       setFromDate('');
       return;
     }
@@ -232,8 +246,8 @@ const LeaveRequests = () => {
       return;
     }
     const day = new Date(val).getUTCDay();
-    if (day === 0 || day === 6) {
-      setApplyFieldErrors(prev => ({ ...prev, toDate: 'Saturdays and Sundays cannot be selected as leave days.' }));
+    if (weekOffDays.includes(day)) {
+      setApplyFieldErrors(prev => ({ ...prev, toDate: 'The selected date falls on a configured week-off day.' }));
       setToDate('');
       return;
     }
@@ -263,8 +277,8 @@ const LeaveRequests = () => {
         errors.fromDate = 'Cannot select past date.';
       } else {
         const fromDay = new Date(fromDate).getUTCDay();
-        if (fromDay === 0 || fromDay === 6) {
-          errors.fromDate = 'Saturdays and Sundays cannot be selected as leave days.';
+        if (weekOffDays.includes(fromDay)) {
+          errors.fromDate = 'The selected date falls on a configured week-off day.';
         } else if (isHolidayDate(fromDate)) {
           errors.fromDate = 'Cannot select a public holiday as a leave day.';
         }
@@ -279,8 +293,8 @@ const LeaveRequests = () => {
           errors.toDate = 'Cannot select past date.';
         } else {
           const toDay = new Date(toDate).getUTCDay();
-          if (toDay === 0 || toDay === 6) {
-            errors.toDate = 'Saturdays and Sundays cannot be selected as leave days.';
+          if (weekOffDays.includes(toDay)) {
+            errors.toDate = 'The selected date falls on a configured week-off day.';
           } else if (isHolidayDate(toDate)) {
             errors.toDate = 'Cannot select a public holiday as a leave day.';
           }
@@ -846,7 +860,8 @@ const LeaveRequests = () => {
                 <div>
                   <h4 className="font-black text-slate-800 text-sm">{selectedRequest.employeeName}</h4>
                   <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider mt-0.5">
-                    {selectedRequest.departmentName || 'No Dept'} • {selectedRequest.employeeCode || 'No Code'}
+                    {selectedRequest.departmentName || 'No Dept'}
+                    {selectedRequest.employeeCode ? ` • ${selectedRequest.employeeCode}` : ''}
                   </p>
                 </div>
               </div>

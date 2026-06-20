@@ -11,11 +11,32 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validateForm = () => {
+    const errors = {};
+    if (!companyCode.trim()) {
+      errors.companyCode = 'Company code is required.';
+    }
+    if (!email.trim()) {
+      errors.email = 'Email address is required.';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = 'Please enter a valid email address.';
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
+    setFieldErrors({});
+
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -51,7 +72,7 @@ const ForgotPassword = () => {
         )}
 
         {!message && (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
             <Input
               label="Company Code"
               name="companyCode"
@@ -59,6 +80,7 @@ const ForgotPassword = () => {
               value={companyCode}
               onChange={(e) => setCompanyCode(e.target.value)}
               required
+              error={fieldErrors.companyCode}
             />
 
             <Input
@@ -69,6 +91,7 @@ const ForgotPassword = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              error={fieldErrors.email}
             />
 
             <Button type="submit" loading={loading} className="w-full mt-2">

@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import authRoutes       from './auth.routes.js';
-import companyRoutes    from './company.routes.js';
 import employeeRoutes from './employee.routes.js';
 import roleRoutes       from './role.routes.js';
 import permissionRoutes from './permission.routes.js';
@@ -10,8 +9,6 @@ import departmentRoutes from './department.routes.js';
 import designationRoutes from './designation.routes.js';
 import branchRoutes     from './branch.routes.js';
 import shiftRoutes      from './shift.routes.js';
-import employeeTypeRoutes from './employee-type.routes.js';
-import workLocationRoutes from './work-location.routes.js';
 import holidayCalendarRoutes from './holiday-calendar.routes.js';
 import leaveRoutes from './leave.routes.js';
 import employeeDocumentRoutes from './employee-document.routes.js';
@@ -31,7 +28,6 @@ router.get('/health', (req, res) => {
 
 // ─── Public + Company Routes ─────────────────────────────────────
 router.use('/auth',            authRoutes);
-router.use('/companies',       companyRoutes);
 router.use('/employees',       employeeRoutes);
 router.use('/roles',           roleRoutes);
 router.use('/permissions',     permissionRoutes);
@@ -40,8 +36,6 @@ router.use('/departments',     departmentRoutes);
 router.use('/designations',    designationRoutes);
 router.use('/branches',        branchRoutes);
 router.use('/shifts',          shiftRoutes);
-router.use('/employee-types',  employeeTypeRoutes);
-router.use('/work-locations',  workLocationRoutes);
 router.use('/holidays',        holidayCalendarRoutes);
 router.use('/leave',           leaveRoutes);
 router.use('/documents',       employeeDocumentRoutes);

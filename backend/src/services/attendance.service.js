@@ -12,16 +12,84 @@ import mongoose from 'mongoose';
  * Helper to fetch company settings or fall back to system defaults.
  */
 export const getSettings = async (companyId) => {
-  let settings = await AttendanceSetting.findOne({ companyId });
-  if (!settings) {
-    settings = {
-      fullDayMinutes: 480,
-      halfDayMinutes: 240,
-      fixedBreakMinutes: 60,
-      earlyCheckoutTolerance: 15,
-    };
+  const active = await AttendanceSetting.findOne({
+    companyId,
+    effectiveTo: null,
+  }).lean();
+
+  return active || {
+    fullDayMinutes: 480,
+    halfDayMinutes: 240,
+    fixedBreakMinutes: 60,
+    earlyCheckoutTolerance: 15,
+    weekOffDays: [0, 6],
+  };
+};
+
+export const getCompanySettings = async (companyId) => {
+  return getSettings(companyId);
+};
+
+export const updateCompanySettings = async (companyId, data) => {
+  const {
+    fullDayMinutes = 480,
+    halfDayMinutes = 240,
+    fixedBreakMinutes = 60,
+    earlyCheckoutTolerance = 15,
+    weekOffDays = [0, 6],
+  } = data;
+
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const yesterdayEnd = new Date(todayStart.getTime() - 1);
+
+  const active = await AttendanceSetting.findOne({
+    companyId,
+    effectiveTo: null,
+  });
+
+  if (!active) {
+    const created = new AttendanceSetting({
+      companyId,
+      fullDayMinutes,
+      halfDayMinutes,
+      fixedBreakMinutes,
+      earlyCheckoutTolerance,
+      weekOffDays,
+      effectiveFrom: todayStart,
+      effectiveTo: null,
+    });
+    return await created.save();
   }
-  return settings;
+
+  const oldWeekOff = active.weekOffDays || [];
+  const changed =
+    oldWeekOff.length !== weekOffDays.length ||
+    !oldWeekOff.every((val) => weekOffDays.includes(val));
+
+  if (changed) {
+    active.effectiveTo = yesterdayEnd;
+    await active.save();
+
+    const created = new AttendanceSetting({
+      companyId,
+      fullDayMinutes,
+      halfDayMinutes,
+      fixedBreakMinutes,
+      earlyCheckoutTolerance,
+      weekOffDays,
+      effectiveFrom: todayStart,
+      effectiveTo: null,
+    });
+    return await created.save();
+  } else {
+    active.fullDayMinutes = fullDayMinutes;
+    active.halfDayMinutes = halfDayMinutes;
+    active.fixedBreakMinutes = fixedBreakMinutes;
+    active.earlyCheckoutTolerance = earlyCheckoutTolerance;
+    return await active.save();
+  }
 };
 
 /**
@@ -483,8 +551,19 @@ const resolveVirtualStatus = async (companyId, employeeId, dateStr, joinDateStr 
   });
   if (holiday) return 'holiday';
 
-  // 3. Sunday Check
-  if (dateObj.getUTCDay() === 0) return 'week_off';
+  // 3. Dynamic Week-off Check
+  const activeSettings = await AttendanceSetting.findOne({
+    companyId,
+    effectiveFrom: { $lte: dateObj },
+    $or: [
+      { effectiveTo: null },
+      { effectiveTo: { $gte: dateObj } }
+    ]
+  }).lean();
+  const weekOffDays = activeSettings?.weekOffDays ?? [0, 6];
+  if (weekOffDays.includes(dateObj.getUTCDay())) {
+    return 'week_off';
+  }
 
   return 'absent';
 };
@@ -753,6 +832,23 @@ export const getCompanyMonthlySummary = async (companyId, query) => {
   const start = new Date(startY, startM - 1, startD);
   const end = new Date(endY, endM - 1, endD);
 
+  const settingsList = await AttendanceSetting.find({ companyId })
+    .sort({ effectiveFrom: 1 })
+    .lean();
+
+  const getSettingsForDateInMemory = (date) => {
+    const checkDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const checkMs = checkDate.getTime();
+
+    const match = settingsList.find((s) => {
+      const fromMs = new Date(s.effectiveFrom).getTime();
+      const toMs = s.effectiveTo ? new Date(s.effectiveTo).getTime() : Infinity;
+      return checkMs >= fromMs && checkMs <= toMs;
+    });
+
+    return match || { weekOffDays: [0, 6] };
+  };
+
   for (const emp of employees) {
     const joinDateStr = emp.createdAt ? formatDateString(emp.createdAt) : null;
 
@@ -770,7 +866,9 @@ export const getCompanyMonthlySummary = async (companyId, query) => {
         continue;
       }
       const dayOfWeek = d.getDay(); // 0 = Sunday, 6 = Saturday (local day)
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      const currentSettings = getSettingsForDateInMemory(d);
+      const weekOffDays = currentSettings.weekOffDays || [0, 6];
+      if (!weekOffDays.includes(dayOfWeek)) {
         empWorkingDays++;
       }
     }

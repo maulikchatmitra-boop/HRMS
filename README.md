@@ -433,17 +433,20 @@ Tracks daily attendance logs, work timings calculations, and regularization requ
 ---
 
 ### Collection: `attendance_settings`
-Company-wide global rules defining full-day, half-day, and shift break thresholds.
+Company-wide global rules defining full-day, half-day, shift break thresholds, and weekly off days.
 
 | Field | Type | Required | Notes |
 | :--- | :--- | :--- | :--- |
-| `companyId` | ObjectId | ✅ | Ref → companies (unique) |
+| `companyId` | ObjectId | ✅ | Ref → companies |
 | `fullDayMinutes` | Number | ✅ | Target minutes for full-day credit (default: 480) |
 | `halfDayMinutes` | Number | ✅ | Target minutes for half-day credit (default: 240) |
 | `fixedBreakMinutes` | Number | ✅ | Standard break deduction (default: 60) |
 | `earlyCheckoutTolerance` | Number | ✅ | Permissible early exit grace period (default: 15) |
+| `weekOffDays` | `[Number]` | ✅ | Week-off days (0 = Sunday, 1 = Monday, ..., 6 = Saturday. Default: `[0, 6]`) |
+| `effectiveFrom` | Date | ✅ | Date from which settings version is active (default: current UTC start of day) |
+| `effectiveTo` | Date | ❌ | Expiry date of settings version (null if currently active) |
 
-**Indexes:** `{ companyId: 1 }` (unique)
+**Indexes:** `{ companyId: 1, effectiveFrom: 1 }` (non-unique)
 
 ---
 
@@ -705,6 +708,20 @@ Base URL: `http://localhost:5000/api/v1`
 * `PUT /leave/notifications/:id/read` — Protected. Mark notification as read.
 * `DELETE /leave/notifications` — Protected. Clear all notifications from database.
 
+### Attendance Management (`/attendance`)
+* `POST /attendance/check-in` — Protected (`attendance.checkin`). Clock-in today's working shift.
+* `POST /attendance/check-out` — Protected (`attendance.checkout`). Clock-out today's working shift.
+* `POST /attendance/regularize` — Protected (`attendance.regularize`). Submit attendance regularization.
+* `POST /attendance/approve-regularization/:id` — Protected (`attendance.approve`). Approve regularization requests.
+* `POST /attendance/override` — Protected (`attendance.manage`). Overwrite employee daily timing parameters.
+* `GET /attendance/settings` — Protected (`attendance.view`). Retrieve active company settings.
+* `PUT /attendance/settings` — Protected (`attendance.manage`). Update company settings (week-offs, thresholds) via effective dating versioning.
+* `GET /attendance/my-logs` — Protected (`attendance.view`). View employee's check-in/out logs.
+* `GET /attendance/team-logs` — Protected (`attendance.view`). View reporting team logs (Manager only).
+* `GET /attendance/monthly-summary` — Protected (`attendance.view`). Get individual monthly attendance summary counts.
+* `GET /attendance/dashboard-metrics` — Protected (`attendance.view`). Fetch employee/company dashboard timing cards.
+* `GET /attendance/company-monthly-summary` — Protected (`attendance.manage`). Fetch company-wide employee monthly roster.
+
 ### Document Management (`/documents` & `/employees`)
 * `POST /documents/upload` — Protected (`document.upload`). Upload a document for an employee or a company policy.
 * `GET /documents/dashboard` — Protected (`document.view`). Retrieve documents list for frontend tabs with dynamic polling.
@@ -774,6 +791,12 @@ Base URL: `http://localhost:5000/api/v1`
 | `document.delete` | document | delete | Remove documents permanently from Cloudinary & DB |
 | `document.download` | document | download | Download employee or company documents |
 | `document.verify` | document | verify | Approve or reject employee document uploads |
+| `attendance.checkin` | attendance | checkin | Log check-in times |
+| `attendance.checkout` | attendance | checkout | Log check-out times |
+| `attendance.regularize` | attendance | regularize | Apply for attendance regularization overrides |
+| `attendance.approve` | attendance | approve | Approve/reject employee attendance regularization requests |
+| `attendance.manage` | attendance | manage | Full override controls and settings configuration updates |
+| `attendance.view` | attendance | view | View attendance records, settings, and monthly reports |
 
 ---
 
@@ -817,6 +840,12 @@ Seeded company roles map to permissions based on the corporate access matrix bel
 | `document.delete` | ✅ | ✅ | ❌ | ❌ |
 | `document.download` | ✅ | ✅ | ✅ | ✅ |
 | `document.verify` | ✅ | ✅ | ❌ | ❌ |
+| `attendance.checkin` | ✅ | ✅ | ✅ | ✅ |
+| `attendance.checkout` | ✅ | ✅ | ✅ | ✅ |
+| `attendance.regularize` | ✅ | ✅ | ✅ | ✅ |
+| `attendance.approve` | ✅ | ✅ | ✅ | ❌ |
+| `attendance.manage` | ✅ | ❌ | ❌ | ❌ |
+| `attendance.view` | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -1036,4 +1065,26 @@ All API responses follow this consistent structure:
 
 ### 3. Clickable Logo Navigation
 - **Home Dashboard Link**: Wrapped the sidebar company branding header ("H" icon, "HRMS System" text, and "Enterprise" text) in a React Router `<Link>` tag that dynamically routes the user to their role-specific landing dashboard.
+
+
+## Technical Updates (June 20, 2026)
+
+### 1. Effective-Dated Custom Settings & Dynamic Week-Offs
+- **Database Settings Versioning**: Introduced the `AttendanceSetting` model to store organization configuration version history using `effectiveFrom` and `effectiveTo` dates, indexed by `{ companyId: 1, effectiveFrom: 1 }`.
+- **Dynamic Weekend Calculations**: Integrated custom `weekOffDays` dynamically into:
+  - Backend attendance calculations (`resolveVirtualStatus` and monthly reports).
+  - Leave duration computations (`calculateWorkingDays` for excluding custom weekends).
+  - Frontend validation: Blocking configured week-off dates from being chosen inside the `LeaveRequests` datepickers.
+- **Organization Settings Dashboard**: Created `/admin/settings` where Company Admins can configure their organization's weekly weekend policy.
+
+### 2. Skip Manager Approval Stage if Boss is HR or Admin
+- **Smart Workflow Routing**: Updated backend leave routing so that if an employee's reporting manager holds an HR or Admin system role, the request skips the manager approval stage entirely and initializes with `pending_hr` status.
+- **Direct Notification Dispatch**: Leveraged fallback direct notifications to alert HR and Admin users immediately when a manager approval stage is bypassed.
+
+### 3. Filter Reporting Manager Options by Manager and HR Only
+- **Dropdown List Filtering**: Restricted the "Reporting Manager" dropdown selector in the Add Employee form to show only active employees holding a Manager or HR role.
+
+### 4. Remove "No Code" UI Placeholders
+- **UI Polishing**: Cleaned up the frontend UI to remove the `'No Code'` text string. Elements displaying the employee code (tables, dropdown labels, and detail modals) are now conditionally hidden or stripped of the suffix if the code is absent.
+
 

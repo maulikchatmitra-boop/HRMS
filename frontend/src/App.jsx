@@ -29,13 +29,13 @@ import AdminShifts from './pages/admin/Shifts';
 import AdminHolidays from './pages/admin/Holidays';
 import AdminRoles from './pages/admin/Roles';
 import AdminAuditLogs from './pages/admin/AuditLogs';
+import AdminSettings from './pages/admin/Settings';
 
 // HR Pages
 import HRDashboard from './pages/hr/Dashboard';
 
 // Manager Pages
 import ManagerDashboard from './pages/manager/Dashboard';
-import ManagerEmployees from './pages/manager/Employees';
 
 // Employee Pages
 import EmployeeDashboard from './pages/employee/Dashboard';
@@ -230,6 +230,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute>
+                <RoleGuard allowedRoles={['Company Admin']}>
+                  <AdminSettings />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
 
           {/* HR Routes */}
           <Route
@@ -309,7 +319,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <RoleGuard requirePermission="employee.view">
-                  <ManagerEmployees />
+                  <AdminEmployees />
                 </RoleGuard>
               </ProtectedRoute>
             }

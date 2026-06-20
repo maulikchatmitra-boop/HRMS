@@ -29,6 +29,7 @@ const Shifts = () => {
   const [endTime, setEndTime] = useState('');
   const [btnLoading, setBtnLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const fetchShifts = async () => {
     setLoading(true);
@@ -49,6 +50,24 @@ const Shifts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+    setFieldErrors({});
+
+    const errors = {};
+    if (!name.trim()) {
+      errors.name = 'Shift name is required.';
+    }
+    if (!startTime) {
+      errors.startTime = 'Start time is required.';
+    }
+    if (!endTime) {
+      errors.endTime = 'End time is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     setBtnLoading(true);
 
     try {
@@ -88,6 +107,7 @@ const Shifts = () => {
     setStartTime(shift ? shift.startTime : '');
     setEndTime(shift ? shift.endTime : '');
     setFormError('');
+    setFieldErrors({});
     setModalOpen(true);
   };
 
@@ -177,7 +197,7 @@ const Shifts = () => {
 
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setFieldErrors({}); }}
         title={editShift ? 'Edit Shift' : 'Create Shift'}
       >
         {formError && (
@@ -185,7 +205,7 @@ const Shifts = () => {
             {formError}
           </div>
         )}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <Input
             label="Shift Name"
             name="name"
@@ -193,6 +213,7 @@ const Shifts = () => {
             onChange={(e) => setName(e.target.value)}
             required
             placeholder="e.g. Regular Day Shift"
+            error={fieldErrors.name}
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
@@ -202,6 +223,7 @@ const Shifts = () => {
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               required
+              error={fieldErrors.startTime}
             />
             <Input
               label="End Time"
@@ -210,10 +232,11 @@ const Shifts = () => {
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
               required
+              error={fieldErrors.endTime}
             />
           </div>
           <div className="flex justify-end gap-3 mt-4">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+            <Button variant="secondary" onClick={() => { setModalOpen(false); setFieldErrors({}); }}>
               Cancel
             </Button>
             <Button type="submit" loading={btnLoading}>

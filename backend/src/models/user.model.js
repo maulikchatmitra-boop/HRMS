@@ -82,18 +82,7 @@ const UserSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
-    employeeTypeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'EmployeeType',
-      default: null,
-      index: true,
-    },
-    workLocationId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'WorkLocation',
-      default: null,
-      index: true,
-    },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

@@ -19,6 +19,9 @@ router.post('/regularize', authorize('attendance.regularize'), validate(regulari
 router.post('/approve-regularization/:id', authorize('attendance.approve'), validate(approveRegularizationSchema), attendanceController.approveRegularization);
 router.post('/override', authorize('attendance.manage'), validate(adminOverrideSchema), attendanceController.overrideAttendance);
 
+router.get('/settings', authorize('attendance.view'), attendanceController.getSettings);
+router.put('/settings', authorize('attendance.manage'), attendanceController.updateSettings);
+
 router.get('/my-logs', authorize('attendance.view'), attendanceController.getMyLogs);
 router.get('/team-logs', authorize('attendance.view'), attendanceController.getTeamLogs);
 router.get('/monthly-summary', authorize('attendance.view'), attendanceController.getMonthlySummary);

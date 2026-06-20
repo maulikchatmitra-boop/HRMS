@@ -24,6 +24,7 @@ const RegularizationRequests = () => {
   const [regReason, setRegReason] = useState('');
   const [formError, setFormError] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Approval Modals
   const [approveModalOpen, setApproveModalOpen] = useState(false);
@@ -32,6 +33,31 @@ const RegularizationRequests = () => {
   const [remarks, setRemarks] = useState('');
   const [targetStatus, setTargetStatus] = useState('present'); // present or half_day
   const [approvalLoading, setApprovalLoading] = useState(false);
+  const [approveFieldErrors, setApproveFieldErrors] = useState({});
+
+  const openSubmitModal = () => {
+    setFormError('');
+    setFieldErrors({});
+    setRegDate('');
+    setRegReason('');
+    setSubmitModalOpen(true);
+  };
+
+  const closeSubmitModal = () => {
+    setFormError('');
+    setFieldErrors({});
+    setRegDate('');
+    setRegReason('');
+    setSubmitModalOpen(false);
+  };
+
+  const closeApproveModal = () => {
+    setFormError('');
+    setApproveFieldErrors({});
+    setRemarks('');
+    setApproveModalOpen(false);
+    setSelectedRequest(null);
+  };
 
   const canApprove = hasPermission(user, 'attendance.approve') || hasPermission(user, 'attendance.manage');
 
@@ -81,20 +107,29 @@ const RegularizationRequests = () => {
 
   const handleCreateRequest = async (e) => {
     e.preventDefault();
-    if (!regDate || !regReason.trim()) {
-      setFormError('All fields are required.');
+    setFormError('');
+    setFieldErrors({});
+
+    const errors = {};
+    if (!regDate) {
+      errors.regDate = 'Date of correction is required.';
+    }
+    if (!regReason.trim()) {
+      errors.regReason = 'Explanation reason is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
-    setFormError('');
+
     setSubmitLoading(true);
     try {
       await axiosClient.post('/attendance/regularize', {
         attendanceDate: regDate,
         regularizationReason: regReason,
       });
-      setSubmitModalOpen(false);
-      setRegDate('');
-      setRegReason('');
+      closeSubmitModal();
       loadData();
     } catch (err) {
       setFormError(extractErrorMessage(err));
@@ -108,11 +143,21 @@ const RegularizationRequests = () => {
     setAction(act);
     setRemarks('');
     setTargetStatus('present');
+    setFormError('');
+    setApproveFieldErrors({});
     setApproveModalOpen(true);
   };
 
   const handleApprovalSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setApproveFieldErrors({});
+
+    if (action === 'approve' && !targetStatus) {
+      setApproveFieldErrors({ targetStatus: 'Target status is required.' });
+      return;
+    }
+
     setApprovalLoading(true);
     try {
       await axiosClient.post(`/attendance/approve-regularization/${selectedRequest._id}`, {
@@ -120,11 +165,10 @@ const RegularizationRequests = () => {
         remarks,
         regularizedStatus: action === 'approve' ? targetStatus : undefined,
       });
-      setApproveModalOpen(false);
-      setSelectedRequest(null);
+      closeApproveModal();
       loadData();
     } catch (err) {
-      alert(extractErrorMessage(err));
+      setFormError(extractErrorMessage(err));
     } finally {
       setApprovalLoading(false);
     }
@@ -294,7 +338,7 @@ const RegularizationRequests = () => {
             Submit correction requests or approve team requests
           </p>
         </div>
-        <Button variant="primary" icon={FiPlus} onClick={() => setSubmitModalOpen(true)}>
+        <Button variant="primary" icon={FiPlus} onClick={openSubmitModal}>
           New Request
         </Button>
       </div>
@@ -354,8 +398,8 @@ const RegularizationRequests = () => {
 
       {/* New Request Modal */}
       {submitModalOpen && (
-        <Modal isOpen={submitModalOpen} title="Submit Regularization Request" onClose={() => setSubmitModalOpen(false)}>
-          <form onSubmit={handleCreateRequest} className="flex flex-col gap-4">
+        <Modal isOpen={submitModalOpen} title="Submit Regularization Request" onClose={closeSubmitModal}>
+          <form onSubmit={handleCreateRequest} noValidate className="flex flex-col gap-4">
             <p className="text-sm text-slate-500 font-medium">
               Submit correction request for a specific date if you forgot to check in or out.
             </p>
@@ -366,6 +410,7 @@ const RegularizationRequests = () => {
               value={regDate}
               onChange={(e) => setRegDate(e.target.value)}
               required
+              error={fieldErrors.regDate}
             />
             <Input
               label="Explanation Reason"
@@ -374,9 +419,10 @@ const RegularizationRequests = () => {
               value={regReason}
               onChange={(e) => setRegReason(e.target.value)}
               required
+              error={fieldErrors.regReason}
             />
             <div className="flex justify-end gap-2 mt-2">
-              <Button variant="secondary" onClick={() => setSubmitModalOpen(false)}>
+              <Button variant="secondary" onClick={closeSubmitModal}>
                 Cancel
               </Button>
               <Button type="submit" variant="primary" loading={submitLoading}>
@@ -389,8 +435,8 @@ const RegularizationRequests = () => {
 
       {/* Approval Details Modal */}
       {approveModalOpen && selectedRequest && (
-        <Modal isOpen={approveModalOpen} title={action === 'approve' ? 'Approve Request' : 'Reject Request'} onClose={() => setApproveModalOpen(false)}>
-          <form onSubmit={handleApprovalSubmit} className="flex flex-col gap-4">
+        <Modal isOpen={approveModalOpen} title={action === 'approve' ? 'Approve Request' : 'Reject Request'} onClose={closeApproveModal}>
+          <form onSubmit={handleApprovalSubmit} noValidate className="flex flex-col gap-4">
             <div className="bg-slate-50 rounded-xl p-4 flex flex-col gap-1 border border-slate-100 text-sm">
               <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Employee</span>
               <p className="font-bold text-slate-700">
@@ -414,6 +460,7 @@ const RegularizationRequests = () => {
                   { value: 'half_day', label: 'Half Day' },
                 ]}
                 required
+                error={approveFieldErrors.targetStatus}
               />
             )}
 
@@ -426,7 +473,7 @@ const RegularizationRequests = () => {
             />
 
             <div className="flex justify-end gap-2 mt-2">
-              <Button variant="secondary" onClick={() => setApproveModalOpen(false)}>
+              <Button variant="secondary" onClick={closeApproveModal}>
                 Cancel
               </Button>
               <Button

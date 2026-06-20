@@ -104,10 +104,15 @@ const Employees = () => {
       setShifts(shiftData || []);
       
       const managersList = managerData.users || managerData.employees || managerData || [];
-      const potentialManagers = (Array.isArray(managersList) ? managersList : []).map((emp) => ({
-        label: `${emp.firstName} ${emp.lastName} (${emp.role?.roleName || 'Employee'})`,
-        value: emp._id,
-      }));
+      const potentialManagers = (Array.isArray(managersList) ? managersList : [])
+        .filter((emp) => {
+          const roleName = (emp.role?.roleName || '').toLowerCase();
+          return roleName.includes('manager') || roleName.includes('hr');
+        })
+        .map((emp) => ({
+          label: `${emp.firstName} ${emp.lastName} (${emp.role?.roleName || 'Employee'})`,
+          value: emp._id,
+        }));
       setManagers(potentialManagers);
     } catch (err) {
       console.error('Failed to load form dependencies:', err);
@@ -372,40 +377,44 @@ const Employees = () => {
     {
       header: 'Actions',
       key: '_id',
-      render: (val, row) => (
-        <div className="flex items-center gap-2">
-          {canEdit && (
-            <Button
-              variant="outline"
-              size="sm"
-              icon={FiEdit}
-              onClick={() => handleOpenModal(row)}
-            >
-              Edit
-            </Button>
-          )}
-          {canDelete && row.status === 'active' && (
-            <Button
-              variant="warning"
-              size="sm"
-              icon={FiAlertTriangle}
-              onClick={() => handleTerminate(val)}
-            >
-              Terminate
-            </Button>
-          )}
-          {canDelete && (
-            <Button
-              variant="danger"
-              size="sm"
-              icon={FiTrash2}
-              onClick={() => handleDelete(val)}
-            >
-              Delete
-            </Button>
-          )}
-        </div>
-      ),
+      render: (val, row) => {
+        const isSelf = user && (row._id === user._id || val === user._id);
+        if (isSelf) return null;
+        return (
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                icon={FiEdit}
+                onClick={() => handleOpenModal(row)}
+              >
+                Edit
+              </Button>
+            )}
+            {canDelete && row.status === 'active' && (
+              <Button
+                variant="warning"
+                size="sm"
+                icon={FiAlertTriangle}
+                onClick={() => handleTerminate(val)}
+              >
+                Terminate
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="danger"
+                size="sm"
+                icon={FiTrash2}
+                onClick={() => handleDelete(val)}
+              >
+                Delete
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 

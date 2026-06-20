@@ -26,6 +26,7 @@ const Branches = () => {
   const [name, setName] = useState('');
   const [btnLoading, setBtnLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const fetchBranches = async () => {
     setLoading(true);
@@ -46,6 +47,13 @@ const Branches = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+    setFieldErrors({});
+
+    if (!name.trim()) {
+      setFieldErrors({ name: 'Branch name is required.' });
+      return;
+    }
+
     setBtnLoading(true);
 
     try {
@@ -80,9 +88,10 @@ const Branches = () => {
     setEditBranch(branch);
     setName(branch ? branch.name : '');
     setFormError('');
+    setFieldErrors({});
     setModalOpen(true);
   };
-
+ 
   const columns = [
     {
       header: 'Branch Name',
@@ -160,7 +169,7 @@ const Branches = () => {
 
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setFieldErrors({}); }}
         title={editBranch ? 'Edit Branch' : 'Create Branch'}
       >
         {formError && (
@@ -168,7 +177,7 @@ const Branches = () => {
             {formError}
           </div>
         )}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <Input
             label="Branch Name"
             name="name"
@@ -176,9 +185,10 @@ const Branches = () => {
             onChange={(e) => setName(e.target.value)}
             required
             placeholder="e.g. London Office"
+            error={fieldErrors.name}
           />
           <div className="flex justify-end gap-3 mt-4">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+            <Button variant="secondary" onClick={() => { setModalOpen(false); setFieldErrors({}); }}>
               Cancel
             </Button>
             <Button type="submit" loading={btnLoading}>

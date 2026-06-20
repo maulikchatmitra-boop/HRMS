@@ -460,7 +460,7 @@ const Companies = () => {
             {formError}
           </div>
         )}
-        <form onSubmit={handleUpdateSubscription} className="flex flex-col gap-4">
+        <form onSubmit={handleUpdateSubscription} noValidate className="flex flex-col gap-4">
           <Input
             label="Status"
             name="status"
