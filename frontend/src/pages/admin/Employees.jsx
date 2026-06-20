@@ -49,6 +49,8 @@ const Employees = () => {
   const [reportingManagerId, setReportingManagerId] = useState('');
   const [branchId, setBranchId] = useState('');
   const [shiftId, setShiftId] = useState('');
+  const [joiningDate, setJoiningDate] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
 
   const canCreate = hasPermission(user, 'employee.create');
   const canEdit = hasPermission(user, 'employee.edit');
@@ -143,6 +145,8 @@ const Employees = () => {
       setReportingManagerId(emp.reportingManager?._id || emp.reportingManager || '');
       setBranchId(emp.branch?._id || emp.branch || '');
       setShiftId(emp.shift?._id || emp.shift || '');
+      setJoiningDate(emp.joiningDate ? emp.joiningDate.split('T')[0] : '');
+      setDateOfBirth(emp.dateOfBirth ? emp.dateOfBirth.split('T')[0] : '');
     } else {
       setFirstName('');
       setLastName('');
@@ -155,6 +159,8 @@ const Employees = () => {
       setReportingManagerId('');
       setBranchId('');
       setShiftId('');
+      setJoiningDate('');
+      setDateOfBirth('');
     }
 
     setModalOpen(true);
@@ -207,6 +213,26 @@ const Employees = () => {
       errors.roleId = 'System role is required.';
     }
 
+    if (!departmentId) {
+      errors.departmentId = 'Department is required.';
+    }
+
+    if (!designationId) {
+      errors.designationId = 'Designation is required.';
+    }
+
+    if (!branchId) {
+      errors.branchId = 'Branch is required.';
+    }
+
+    if (!shiftId) {
+      errors.shiftId = 'Shift schedule is required.';
+    }
+
+    if (!joiningDate) {
+      errors.joiningDate = 'Joining date is required.';
+    }
+
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -232,6 +258,8 @@ const Employees = () => {
       reportingManagerId: reportingManagerId || null,
       branchId: branchId || null,
       shiftId: shiftId || null,
+      joiningDate: joiningDate || null,
+      dateOfBirth: dateOfBirth || null,
     };
 
     if (!editEmployee) {
@@ -534,6 +562,8 @@ const Employees = () => {
               onChange={(e) => setDepartmentId(e.target.value)}
               placeholder="Select Department"
               options={departments.map((d) => ({ label: d.name, value: d._id }))}
+              required
+              error={fieldErrors.departmentId}
             />
           )}
 
@@ -546,6 +576,8 @@ const Employees = () => {
               onChange={(e) => setDesignationId(e.target.value)}
               placeholder="Select Designation"
               options={designations.map((d) => ({ label: d.title, value: d._id }))}
+              required
+              error={fieldErrors.designationId}
             />
           )}
 
@@ -568,6 +600,8 @@ const Employees = () => {
               onChange={(e) => setBranchId(e.target.value)}
               placeholder="Select Branch"
               options={branches.map((b) => ({ label: b.name, value: b._id }))}
+              required
+              error={fieldErrors.branchId}
             />
           )}
 
@@ -580,8 +614,29 @@ const Employees = () => {
               onChange={(e) => setShiftId(e.target.value)}
               placeholder="Select Shift"
               options={shifts.map((s) => ({ label: `${s.name} (${formatTime12h(s.startTime)} - ${formatTime12h(s.endTime)})`, value: s._id }))}
+              required
+              error={fieldErrors.shiftId}
             />
           )}
+
+          <Input
+            label="Joining Date"
+            name="joiningDate"
+            type="date"
+            value={joiningDate}
+            onChange={(e) => setJoiningDate(e.target.value)}
+            required
+            error={fieldErrors.joiningDate}
+          />
+
+          <Input
+            label="Birth Date"
+            name="dateOfBirth"
+            type="date"
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
+            error={fieldErrors.dateOfBirth}
+          />
 
 
 

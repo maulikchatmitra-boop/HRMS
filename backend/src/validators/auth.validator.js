@@ -69,5 +69,6 @@ export const updateProfileSchema = z.object({
     if (!val) return true;
     return /^https?:\/\/\S+\.\S+/.test(val);
   }, { message: 'Please enter a valid image URL starting with http:// or https://.' }),
+  dateOfBirth: z.string().optional().nullable(),
 });
 

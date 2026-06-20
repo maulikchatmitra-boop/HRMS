@@ -105,6 +105,15 @@ const UserSchema = new mongoose.Schema(
       default: null,
     },
 
+    joiningDate: {
+      type: Date,
+      default: null,
+    },
+    dateOfBirth: {
+      type: Date,
+      default: null,
+    },
+
     // ─── Self-updatable Profile Fields ──────────────────────────
     phone: {
       type: String,

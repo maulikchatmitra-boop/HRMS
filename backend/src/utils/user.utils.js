@@ -17,6 +17,8 @@ export const formatCleanUser = (user) => {
     address:     u.address     || null,
     city:        u.city        || null,
     avatar:      u.avatar      || null,
+    joiningDate: u.joiningDate || null,
+    dateOfBirth: u.dateOfBirth || null,
     isSuperAdmin: !!u.isSuperAdmin,
     status:      u.status,
     lastLogin:   u.lastLogin,

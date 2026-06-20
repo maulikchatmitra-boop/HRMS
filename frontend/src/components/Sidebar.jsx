@@ -220,7 +220,7 @@ const Sidebar = () => {
           );
         })}
 
-        {getStructureSetupLinks().length > 0 && (
+        {!user.isSuperAdmin && getStructureSetupLinks().length > 0 && (
           <div className="pt-2">
             <button
               onClick={() => setStructureSetupMenuOpen(!structureSetupMenuOpen)}
@@ -259,7 +259,7 @@ const Sidebar = () => {
           </div>
         )}
 
-        {getBranchShiftLinks().length > 0 && (
+        {!user.isSuperAdmin && getBranchShiftLinks().length > 0 && (
           <div className="pt-2">
             <button
               onClick={() => setBranchShiftMenuOpen(!branchShiftMenuOpen)}
@@ -298,7 +298,7 @@ const Sidebar = () => {
           </div>
         )}
 
-        {getLeaveLinks().length > 0 && (
+        {!user.isSuperAdmin && getLeaveLinks().length > 0 && (
           <div className="pt-2">
             <button
               onClick={() => setLeaveMenuOpen(!leaveMenuOpen)}
@@ -337,7 +337,7 @@ const Sidebar = () => {
           </div>
         )}
 
-        {getAttendanceLinks().length > 0 && (
+        {!user.isSuperAdmin && getAttendanceLinks().length > 0 && (
           <div className="pt-2">
             <button
               onClick={() => setAttendanceMenuOpen(!attendanceMenuOpen)}

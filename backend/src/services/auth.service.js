@@ -365,7 +365,7 @@ export const getCurrentUser = async (userId, companyId) => {
  */
 export const updateSelfProfile = async (userId, companyId, updateData) => {
   // Sirf yeh fields allow hain — sensitive fields blocked
-  const allowedFields = ['firstName', 'lastName', 'phone', 'address', 'city', 'avatar'];
+  const allowedFields = ['firstName', 'lastName', 'phone', 'address', 'city', 'avatar', 'dateOfBirth'];
 
   const actualUpdates = {};
   Object.keys(updateData).forEach(key => {

@@ -5,7 +5,7 @@ import Card from '../components/Card';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { FiUser, FiLock, FiCalendar, FiMapPin, FiClock, FiCheck, FiCamera, FiLoader } from 'react-icons/fi';
-import { formatTime12h, formatDateTimeDisplay } from '../utils/user.utils';
+import { formatTime12h, formatDateTimeDisplay, formatDateDisplay } from '../utils/user.utils';
 
 const Profile = () => {
   const { user, setUser, updateProfile } = useAuth();
@@ -19,6 +19,7 @@ const Profile = () => {
   const [address, setAddress] = useState(user?.address || '');
   const [city, setCity] = useState(user?.city || '');
   const [avatar, setAvatar] = useState(user?.avatar || '');
+  const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth ? user.dateOfBirth.split('T')[0] : '');
 
   // Password Edit State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -186,6 +187,7 @@ const Profile = () => {
         address: address ? address.trim() : '',
         city: city ? city.trim() : '',
         avatar: avatar ? avatar.trim() : null,
+        dateOfBirth: dateOfBirth || null,
       });
       setProfileSuccess('Profile updated successfully.');
     } catch (err) {
@@ -417,6 +419,14 @@ const Profile = () => {
                   error={fieldErrors.city}
                 />
                 <Input
+                  label="Birth Date"
+                  name="dateOfBirth"
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  error={fieldErrors.dateOfBirth}
+                />
+                <Input
                   label="Address"
                   name="address"
                   type="textarea"
@@ -474,6 +484,15 @@ const Profile = () => {
                     {user?.shift
                       ? `${user.shift.name} (${formatTime12h(user.shift.startTime)} - ${formatTime12h(user.shift.endTime)})`
                       : 'Not Assigned'}
+                  </span>
+                </div>
+                <hr className="border-slate-50" />
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Joining Date
+                  </span>
+                  <span className="text-sm font-semibold text-slate-700 block mt-0.5">
+                    {user?.joiningDate ? formatDateDisplay(user.joiningDate) : 'Not Specified'}
                   </span>
                 </div>
                 <hr className="border-slate-50" />

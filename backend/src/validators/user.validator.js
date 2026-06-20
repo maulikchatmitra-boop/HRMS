@@ -21,13 +21,20 @@ export const createUserSchema = z.object({
   roleId: z.string({ required_error: 'Role ID mapping is required.' })
     .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Role ID format (must be Mongoose ObjectId).'),
   status: z.enum(['active', 'inactive']).optional(),
-  departmentId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Department ID format.').nullable().optional(),
-  designationId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Designation ID format.').nullable().optional(),
+  departmentId: z.string({ required_error: 'Department is required.' })
+    .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Department ID format.'),
+  designationId: z.string({ required_error: 'Designation is required.' })
+    .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Designation ID format.'),
   reportingManagerId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Reporting Manager ID format.').nullable().optional(),
-  branchId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Branch ID format.').nullable().optional(),
-  shiftId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Shift ID format.').nullable().optional(),
+  branchId: z.string({ required_error: 'Branch is required.' })
+    .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Branch ID format.'),
+  shiftId: z.string({ required_error: 'Shift schedule is required.' })
+    .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Shift ID format.'),
   employeeTypeId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Employee Type ID format.').nullable().optional(),
-  workLocationId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Work Location ID format.').nullable().optional()
+  workLocationId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Work Location ID format.').nullable().optional(),
+  joiningDate: z.string({ required_error: 'Joining date is required.' })
+    .min(1, 'Joining date is required.'),
+  dateOfBirth: z.string().optional().nullable()
 });
 
 export const updateUserSchema = z.object({
@@ -57,5 +64,7 @@ export const updateUserSchema = z.object({
   branchId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Branch ID format.').nullable().optional(),
   shiftId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Shift ID format.').nullable().optional(),
   employeeTypeId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Employee Type ID format.').nullable().optional(),
-  workLocationId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Work Location ID format.').nullable().optional()
+  workLocationId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Work Location ID format.').nullable().optional(),
+  joiningDate: z.string().optional().nullable(),
+  dateOfBirth: z.string().optional().nullable()
 });

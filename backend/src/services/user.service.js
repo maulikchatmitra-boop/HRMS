@@ -64,6 +64,8 @@ export const createUser = async (companyId, userData, actorId) => {
     shiftId:            userData.shiftId            || null,
     employeeTypeId:     userData.employeeTypeId     || null,
     workLocationId:     userData.workLocationId     || null,
+    joiningDate:        userData.joiningDate        || null,
+    dateOfBirth:        userData.dateOfBirth        || null,
     createdBy: actorId,
     updatedBy: actorId
   });
@@ -233,7 +235,8 @@ export const updateUser = async (companyId, userId, updateData, actorId) => {
   const allowedUpdates = [
     'firstName', 'lastName', 'email', 'roleId', 'status',
     'departmentId', 'designationId', 'reportingManagerId',
-    'branchId', 'shiftId', 'employeeTypeId', 'workLocationId'
+    'branchId', 'shiftId', 'employeeTypeId', 'workLocationId',
+    'joiningDate', 'dateOfBirth'
   ];
   const actualUpdates = {
     updatedBy: actorId
